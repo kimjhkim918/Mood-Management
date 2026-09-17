@@ -379,6 +379,11 @@ h3.formH:first-child{margin-top:0;padding-top:0;border-top:none;}
 .dayCheckRow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
 .dayCheckRow label{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border:1px solid var(--border-strong);border-radius:99px;padding:5px 10px;cursor:pointer;}
 .nowBadge24{display:inline-block;margin-left:6px;font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;background:var(--good-soft);color:var(--good);vertical-align:middle;}
+.faderChipRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.faderChip{flex:0 0 auto;min-width:92px;max-width:160px;border:1px solid var(--border-strong);border-radius:9px;padding:8px 10px;background:var(--surface-2);}
+.faderChipName{font-size:11.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.faderChipValue{font-size:13px;font-weight:700;color:var(--accent-strong);margin-top:2px;}
+.faderChipMemo{font-size:10.5px;color:var(--text-muted);margin-top:3px;line-height:1.35;}
 </style>
 <!-- Firebase SDK: 반드시 앱 로직(main script)보다 먼저, 그리고 각 script 태그를 </script>로 정상 종료해서 불러옵니다 -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -458,7 +463,7 @@ h3.formH:first-child{margin-top:0;padding-top:0;border-top:none;}
       <table class="matrix" id="matrixTable">
         <thead><tr>
           <th data-k="wing" id="colWing">동(棟)</th><th data-k="name" id="colName">구역</th><th data-k="category" id="colCategory">카테고리</th>
-          <th data-k="status" id="colStatus">상태</th><th id="colBaseGenre">원래(정규) 장르</th><th id="colGenre">지금 장르</th><th id="colEventNote">이벤트 사유</th><th id="colFader">기준 페이더</th><th id="colDbDay">주간 dB</th><th id="colDbNight">야간 dB</th><th data-k="dbNote" id="colDb">음압(dB) 기준</th><th data-k="lux" id="colLux">조도 제안</th><th id="colLightSetting">조명별 설정값</th>
+          <th data-k="status" id="colStatus">상태</th><th id="colBaseGenre">원래(정규) 장르</th><th id="colGenre">지금 장르</th><th id="colEventNote">이벤트 사유</th><th id="colFaderDay">주간 페이더</th><th id="colFaderNight">야간 페이더</th><th id="colDbDay">주간 dB</th><th id="colDbNight">야간 dB</th><th data-k="dbNote" id="colDb">음압(dB) 기준</th><th data-k="lux" id="colLux">조도 제안</th><th id="colLightSetting">조명별 설정값</th>
         </tr></thead>
         <tbody id="matrixBody"></tbody>
       </table>
@@ -906,7 +911,7 @@ const SEED_UITEXT = {
   matrixTitle:"공간·시간·계절 통합 표준화 매트릭스",
   matrixDesc:"지금 이 순간 각 구역에서 송출 중인 장르와 기준값을 한 번에 비교합니다. 열 머리글을 클릭하면 정렬됩니다.",
   colWing:"동(棟)", colName:"구역", colCategory:"카테고리", colStatus:"상태", colGenre:"지금 장르", colBaseGenre:"원래(정규) 장르", colEventNote:"이벤트 사유", colDb:"음압(dB) 기준", colLux:"조도 제안",
-  colFader:"기준 페이더", colDbDay:"주간 dB", colDbNight:"야간 dB", colLightSetting:"조명별 설정값",
+  colFaderDay:"주간 페이더", colFaderNight:"야간 페이더", colDbDay:"주간 dB", colDbNight:"야간 dB", colLightSetting:"조명별 설정값",
   storeOpenLabel:"매장 운영 중", storeClosedLabel:"매장 운영 전·후 (BGM만 송출)", storeClosedOverlayTitle:"매장 운영 전/후 — BGM만 송출 중", breakLabel:"브레이크타임",
   brandingEyebrow:"Sonic Branding",
   brandingTitle:"PSS BGM 장르 가이드",
@@ -995,6 +1000,7 @@ function cloneZone(z){ return {...z, operating:{...z.operating}, art: z.art?{...
   standardLux: (z.standardLux||[]).map(v=>({...v})),
   faderSpots: (z.faderSpots||[]).map(v=>({...v})),
   dbSpots: (z.dbSpots||[]).map(v=>({...v})),
+  faderTimeSpots: (z.faderTimeSpots||[]).map(v=>({...v})),
   extraFloors: (z.extraFloors||[]).map(v=>({...v})),
   announcements: (z.announcements||[]).map(v=>({...v})),
   hoursByDay: z.hoursByDay ? {mon:(z.hoursByDay.mon||[]).map(r=>({...r})),tue:(z.hoursByDay.tue||[]).map(r=>({...r})),wed:(z.hoursByDay.wed||[]).map(r=>({...r})),thu:(z.hoursByDay.thu||[]).map(r=>({...r})),fri:(z.hoursByDay.fri||[]).map(r=>({...r})),sat:(z.hoursByDay.sat||[]).map(r=>({...r})),sun:(z.hoursByDay.sun||[]).map(r=>({...r}))} : null
@@ -1677,7 +1683,7 @@ function renderPanel(z){
   const usingEvent = !!z.eventActive;
   const sched = activeScheduleOf(z);
   const eventBannerHtml = usingEvent ? `<div class="eventBanner">🎉 이벤트 모드 진행 중${z.eventNote?' — '+z.eventNote:''}</div>` : '';
-  const faderDisplay = (z.faderSpots&&z.faderSpots.length) ? z.faderSpots.map(v=>`${v.name||'-'} ${v.value||''}`).join(' · ') : (z.faderNote||'-');
+  const faderDisplay = zoneCurrentFader(z,cat,minute) || (z.faderNote||'-');
   const dbNow = zoneCurrentDb(z,cat,minute) || (z.dbNote||'').split(' — ')[0];
   let nowHtml, timelineHtml, tableHtml;
   if(sched && sched.length){
@@ -1726,7 +1732,7 @@ function renderPanel(z){
     ${timelineHtml}${tableHtml}
     <div class="infoblock"><h4>타깃 페르소나 / 목표 무드</h4><p>${z.persona||'-'}</p><p class="muted">${z.moodGoal||''}</p></div>
     <div class="infoblock"><h4>음압(dB) 시간대별 기록</h4>${dbSpotsHtml}<p class="muted">${z.dbNote||'-'}</p></div>
-    ${(z.faderSpots&&z.faderSpots.length)?`<div class="infoblock"><h4>공간별 기준 페이더</h4>${z.faderSpots.map(v=>`<p class="muted"><b style="color:var(--text);">${v.name||'-'}</b>: ${v.value||'-'}${v.memo?' — '+v.memo:''}</p>`).join('')}</div>`:''}
+    ${(z.faderSpots&&z.faderSpots.length)?`<div class="infoblock"><h4>공간별 기준 페이더</h4><div class="faderChipRow">${z.faderSpots.map(v=>`<div class="faderChip"><div class="faderChipName">${v.name||'-'}</div><div class="faderChipValue">${v.value||'-'}</div>${v.memo?`<div class="faderChipMemo">${v.memo}</div>`:''}</div>`).join('')}</div></div>`:''}
     <div class="infoblock"><h4>조도(럭스) 기준 — ${categoryLabel(z.category)}</h4>
       <p class="muted">전체 기준 · 지금(${curSlot?curSlot.label:'-'}) ${zoneCurrentLux(z,cat,minute)}${alwaysLux?` <span class="nowBadge24">현재</span> ${alwaysLux.label} ${alwaysLux.value}`:''}</p>
       ${lightSpotsViewHtml(z,cat,curSlot?curSlot.id:null)}
@@ -1784,7 +1790,7 @@ function renderMatrix(){
       genre: hasSched?cur.g:'-', dbNote:(z.dbNote||'').split(' — ')[0].slice(0,40),
       baseGenre: baseCur?(baseCur.g||'-'):'-',
       eventNote: z.eventActive?(z.eventNote||'(사유 미입력)'):'-',
-      fader: (z.faderSpots&&z.faderSpots.length) ? z.faderSpots.map(v=>`${v.name||'-'} ${v.value||''}`).join(' · ') : (z.faderNote||'-'),
+      faderDay: faderSpotByLabel(z,'주간')||(z.faderNote?z.faderNote.slice(0,24):'-'), faderNight: faderSpotByLabel(z,'야간')||(z.faderNote?z.faderNote.slice(0,24):'-'),
       dbDay: dbSpotByLabel(z,'주간')||'-', dbNight: dbSpotByLabel(z,'야간')||'-',
       lux: luxSummaryForMinute(zCat, minute),
       lightSetting: lightSpotsSummaryForMinute(z,zCat,minute) };
@@ -1797,7 +1803,8 @@ function renderMatrix(){
       <td class="nowrapcell" style="font-size:11.5px;color:var(--text-muted);">${r.baseGenre}</td>
       <td class="mono nowrapcell" style="font-size:11.8px;">${r.genre}</td>
       <td class="nowrapcell" style="font-size:11.5px;color:var(--text-muted);">${r.eventNote}</td>
-      <td style="font-size:11.5px;color:var(--text-muted);">${r.fader}</td>
+      <td style="font-size:11.5px;color:var(--text-muted);">${r.faderDay}</td>
+      <td style="font-size:11.5px;color:var(--text-muted);">${r.faderNight}</td>
       <td style="font-size:11.5px;color:var(--text-muted);">${r.dbDay}</td>
       <td style="font-size:11.5px;color:var(--text-muted);">${r.dbNight}</td>
       <td style="font-size:11.5px;color:var(--text-muted);">${r.dbNote}</td>
@@ -1958,7 +1965,7 @@ function renderUiText(){
   set('mapEyebrow',t.mapEyebrow); set('mapTitle',t.mapTitle); set('mapDesc',t.mapDesc); set('mapCaptionViewer',t.mapCaptionViewer);
   set('matrixEyebrow',t.matrixEyebrow); set('matrixTitle',t.matrixTitle); set('matrixDesc',t.matrixDesc);
   set('colWing',t.colWing); set('colName',t.colName); set('colCategory',t.colCategory); set('colStatus',t.colStatus); set('colGenre',t.colGenre); set('colBaseGenre',t.colBaseGenre); set('colEventNote',t.colEventNote); set('colDb',t.colDb); set('colLux',t.colLux);
-  set('colFader',t.colFader); set('colDbDay',t.colDbDay); set('colDbNight',t.colDbNight); set('colLightSetting',t.colLightSetting);
+  set('colFaderDay',t.colFaderDay); set('colFaderNight',t.colFaderNight); set('colDbDay',t.colDbDay); set('colDbNight',t.colDbNight); set('colLightSetting',t.colLightSetting);
   set('brandingEyebrow',t.brandingEyebrow); set('brandingTitle',t.brandingTitle);
   set('colGGenre',t.colGGenre); set('colGDesc',t.colGDesc); set('colGMood',t.colGMood); set('colGBpm',t.colGBpm); set('colGUse',t.colGUse);
   set('footerNote',t.footerNote);
@@ -2296,11 +2303,93 @@ function ensureHoursByDay(){
   }
   return adminDraft.hoursByDay;
 }
-function addHourRange(day){ collectDraftFromForm(); ensureHoursByDay(); adminDraft.hoursByDay[day].push({s:'09:00',e:'18:00',type:'open',label:''}); renderAdminForm(); }
-function removeHourRange(day,i){ collectDraftFromForm(); adminDraft.hoursByDay[day].splice(i,1); renderAdminForm(); }
-function readHourRangeRow(row){ return {s:row.querySelector('.hr-s').value.trim(), e:row.querySelector('.hr-e').value.trim(), type:row.querySelector('.hr-type').value, label:row.querySelector('.hr-label').value.trim()}; }
-function hourRangeRowHtml(r,day,i){
-  return `<div class="opRangeRow hr-row" data-i="${i}">
+/* ---- 요일 그룹(원하는 요일끼리 묶어서 한 번에 편집) ---- */
+let hourGroupsUI = null; // {zoneId, groups:[{days:[...], ranges:[{s,e,type,label}]}]}
+function normalizeRangeForCompare_(r){ return (r.s||'')+'|'+(r.e||'')+'|'+(r.type||'open')+'|'+(r.label||''); }
+function rangesEqual_(a,b){ return JSON.stringify((a||[]).map(normalizeRangeForCompare_)) === JSON.stringify((b||[]).map(normalizeRangeForCompare_)); }
+function buildHourGroupsFromHoursByDay_(){
+  const hbd = ensureHoursByDay();
+  const groups = [];
+  DAY_KEYS.forEach(day=>{
+    const ranges = hbd[day]||[];
+    const existing = groups.find(g=>rangesEqual_(g.ranges, ranges));
+    if(existing) existing.days.push(day);
+    else groups.push({days:[day], ranges: ranges.map(r=>({...r}))});
+  });
+  return groups;
+}
+function ensureHourGroupsUI(){
+  if(!hourGroupsUI || hourGroupsUI.zoneId !== adminDraft.id){
+    hourGroupsUI = { zoneId: adminDraft.id, groups: buildHourGroupsFromHoursByDay_() };
+  }
+  return hourGroupsUI.groups;
+}
+function collectHourGroupsFromDom_(){
+  if(!hourGroupsUI) return;
+  hourGroupsUI.groups.forEach((g,gi)=>{
+    const wrap=document.querySelector('.hgRows_'+gi);
+    if(wrap) g.ranges = [...wrap.querySelectorAll('.hg-row')].map(row=>({
+      s:row.querySelector('.hr-s').value.trim(), e:row.querySelector('.hr-e').value.trim(),
+      type:row.querySelector('.hr-type').value, label:row.querySelector('.hr-label').value.trim()
+    }));
+  });
+}
+function expandGroupsToHoursByDay_(){
+  ensureHoursByDay();
+  const assigned = new Set();
+  hourGroupsUI.groups.forEach(g=>{ g.days.forEach(d=>{ assigned.add(d); adminDraft.hoursByDay[d]=g.ranges.map(r=>({...r})); }); });
+  DAY_KEYS.forEach(d=>{ if(!assigned.has(d)) adminDraft.hoursByDay[d]=[]; });
+}
+function toggleHourGroupDay(gi,day,checked){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.forEach((g,i)=>{ if(i!==gi){ const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); } });
+  const g=hourGroupsUI.groups[gi];
+  if(checked){ if(!g.days.includes(day)) g.days.push(day); }
+  else { const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroup(){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.push({days:[], ranges:[{s:'09:00',e:'18:00',type:'open',label:''}]});
+  renderAdminForm();
+}
+function removeHourGroup(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.splice(gi,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroupRange(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.push({s:'09:00',e:'18:00',type:'open',label:''});
+  renderAdminForm();
+}
+function removeHourGroupRange(gi,ri){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.splice(ri,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function applyHourPreset(name){
+  collectHourGroupsFromDom_();
+  expandGroupsToHoursByDay_();
+  if(name==='weekday_weekend'){
+    hourGroupsUI.groups = [
+      {days:['mon','tue','wed','thu','fri'], ranges:(adminDraft.hoursByDay.mon||[]).map(r=>({...r}))},
+      {days:['sat','sun'], ranges:(adminDraft.hoursByDay.sat||[]).map(r=>({...r}))}
+    ];
+  } else if(name==='each_day'){
+    hourGroupsUI.groups = DAY_KEYS.map(d=>({days:[d], ranges:(adminDraft.hoursByDay[d]||[]).map(r=>({...r}))}));
+  } else if(name==='all_same'){
+    const base=(adminDraft.hoursByDay.mon||[]).map(r=>({...r}));
+    hourGroupsUI.groups = [{days:[...DAY_KEYS], ranges:base}];
+  }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function hourGroupRangeRowHtml(r,gi,ri){
+  return `<div class="opRangeRow hg-row" data-ri="${ri}">
     <input type="text" class="hr-s" value="${r.s}" placeholder="09:00" style="width:64px;">
     <span style="color:var(--text-muted);">–</span>
     <input type="text" class="hr-e" value="${r.e}" placeholder="18:00" style="width:64px;">
@@ -2309,39 +2398,35 @@ function hourRangeRowHtml(r,day,i){
       <option value="break" ${r.type==='break'?'selected':''}>브레이크타임</option>
     </select>
     <input type="text" class="hr-label" value="${(r.label||'').replace(/"/g,'&quot;')}" placeholder="메모(선택)" style="width:110px;">
-    <button type="button" class="rmBtn" onclick="removeHourRange('${day}',${i})">×</button>
+    <button type="button" class="rmBtn" onclick="removeHourGroupRange(${gi},${ri})">×</button>
   </div>`;
 }
-function hoursDayRowHtml(day){
-  const rows = ensureHoursByDay()[day]||[];
-  return `<div class="hoursDayRow">
-    <div style="font-weight:800;font-size:12.5px;margin-bottom:6px;">${DAY_LABELS[day]}요일</div>
-    <div class="hrRows_${day}">${rows.map((r,i)=>hourRangeRowHtml(r,day,i)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대가 없습니다(하루 종일 운영 전으로 표시됩니다).</p>'}</div>
-    <button type="button" class="addRowBtn" onclick="addHourRange('${day}')">+ ${DAY_LABELS[day]}요일 시간대 추가</button>
+function hourGroupRowHtml(g,gi){
+  const dayChecks = DAY_KEYS.map(d=>`<label><input type="checkbox" ${g.days.includes(d)?'checked':''} onchange="toggleHourGroupDay(${gi},'${d}',this.checked)"> ${DAY_LABELS[d]}</label>`).join('');
+  const rangesHtml = g.ranges.map((r,ri)=>hourGroupRangeRowHtml(r,gi,ri)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대가 없습니다(하루 종일 운영 전으로 표시됩니다).</p>';
+  return `<div class="hoursDayRow" data-gi="${gi}">
+    <div class="dayCheckRow">${dayChecks}</div>
+    <div class="hgRows_${gi}">${rangesHtml}</div>
+    <div class="toolRow" style="margin-top:8px;justify-content:space-between;">
+      <button type="button" class="addRowBtn" onclick="addHourGroupRange(${gi})">+ 시간대 추가</button>
+      <button type="button" class="rmBtn" onclick="removeHourGroup(${gi})">이 그룹 삭제</button>
+    </div>
   </div>`;
-}
-function applyHoursToDays(){
-  collectDraftFromForm();
-  ensureHoursByDay();
-  const srcSel=document.getElementById('hoursCopySrc'); const src=srcSel?srcSel.value:'mon';
-  const targets=[...document.querySelectorAll('.hoursCopyTarget:checked')].map(c=>c.value);
-  if(!targets.length){ toast('복사할 요일을 선택하세요'); return; }
-  const srcRows=(adminDraft.hoursByDay[src]||[]).map(r=>({...r}));
-  targets.forEach(day=>{ adminDraft.hoursByDay[day]=srcRows.map(r=>({...r})); });
-  renderAdminForm();
-  toast(DAY_LABELS[src]+'요일 시간대를 '+targets.map(d=>DAY_LABELS[d]).join(', ')+'요일에 복사했습니다');
 }
 function hoursByDayEditorHtml(){
-  ensureHoursByDay();
-  const dayOpts = DAY_KEYS.map(d=>`<option value="${d}">${DAY_LABELS[d]}요일</option>`).join('');
-  const dayChecks = DAY_KEYS.map(d=>`<label><input type="checkbox" class="hoursCopyTarget" value="${d}"> ${DAY_LABELS[d]}</label>`).join('');
-  return `<div class="toolRow" style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:12px;flex-direction:column;align-items:flex-start;">
-    <div style="font-size:12px;font-weight:700;margin-bottom:4px;">요일 선택 후 일괄 적용</div>
-    <div class="toolRow" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--text-muted);">이 요일에서</span><select id="hoursCopySrc">${dayOpts}</select><span style="font-size:12px;color:var(--text-muted);">→ 복사할 요일:</span></div>
-    <div class="dayCheckRow">${dayChecks}</div>
-    <button type="button" class="btnGhost" onclick="applyHoursToDays()">선택한 요일에 일괄 적용</button>
+  const groups = ensureHourGroupsUI();
+  const assigned = new Set(); groups.forEach(g=>g.days.forEach(d=>assigned.add(d)));
+  const unassigned = DAY_KEYS.filter(d=>!assigned.has(d));
+  const warn = unassigned.length ? `<p class="muted" style="color:var(--bad);font-size:11.5px;margin:0 0 10px;">⚠ 아직 그룹에 포함되지 않은 요일: ${unassigned.map(d=>DAY_LABELS[d]).join(', ')} — 이 요일은 하루 종일 "운영 전"으로 표시됩니다. 아래에서 그룹에 체크해 넣어주세요.</p>` : '';
+  return `<p class="secdesc" style="margin:0 0 8px;max-width:none;font-size:11.5px;">같은 운영시간을 쓰는 요일끼리 그룹으로 묶어 한 번만 입력하면 됩니다. 요일마다 다르면 그룹을 나누고, 평일이 다 같으면 그룹 하나로 합치세요.</p>
+  <div class="toolRow" style="margin-bottom:10px;">
+    <button type="button" class="btnGhost" onclick="applyHourPreset('weekday_weekend')">평일 / 주말로 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('each_day')">요일별로 모두 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('all_same')">모든 요일 하나로 합치기</button>
   </div>
-  <div class="fieldrow" style="flex-wrap:wrap;">${DAY_KEYS.map(d=>`<div class="field" style="min-width:220px;flex:1;">${hoursDayRowHtml(d)}</div>`).join('')}</div>`;
+  ${warn}
+  <div id="hourGroupsList">${groups.map((g,gi)=>hourGroupRowHtml(g,gi)).join('')}</div>
+  <button type="button" class="addRowBtn" onclick="addHourGroup()">+ 새 그룹 추가(예: 목~월 / 화~수 처럼 원하는 요일끼리)</button>`;
 }
 
 /* ---- 구역 내 공간별 기준 페이더 + 메모 ---- */
@@ -2379,6 +2464,26 @@ function zoneCurrentDb(z,cat,minute){
   return '';
 }
 function dbSpotByLabel(z,label){ const found=(z.dbSpots||[]).find(v=>{ const s=(findCategory(z.category)&&findCategory(z.category).lux.timeSlots||[]).find(t=>t.id===v.slotId); return s && s.label===label; }); return found?found.value:''; }
+
+/* ---- 구역의 시간대별 기준 페이더(매트릭스·요약용 — 공간별 상세와 별개) ---- */
+function ensureFaderTimeSpots(){ if(!adminDraft.faderTimeSpots) adminDraft.faderTimeSpots=[]; return adminDraft.faderTimeSpots; }
+function addFaderTimeSpotValue(){
+  collectDraftFromForm();
+  const cat=findCategory(adminDraft.category); if(!cat) return;
+  const list=ensureFaderTimeSpots();
+  const used=list.map(v=>v.slotId);
+  const next=(cat.lux.timeSlots||[]).find(s=>!used.includes(s.id));
+  if(!next){ toast('추가할 수 있는 시간대가 없습니다 — 이미 모든 시간대의 값이 있습니다'); return; }
+  list.push({slotId:next.id, value:''});
+  renderAdminForm();
+}
+function removeFaderTimeSpotValue(vi){ collectDraftFromForm(); ensureFaderTimeSpots().splice(vi,1); renderAdminForm(); }
+function zoneCurrentFader(z,cat,minute){
+  const slot=luxSlotForMinute(cat,minute);
+  if(slot){ const entry=(z.faderTimeSpots||[]).find(v=>v.slotId===slot.id); if(entry && entry.value) return entry.value; }
+  return '';
+}
+function faderSpotByLabel(z,label){ const found=(z.faderTimeSpots||[]).find(v=>{ const s=(findCategory(z.category)&&findCategory(z.category).lux.timeSlots||[]).find(t=>t.id===v.slotId); return s && s.label===label; }); return found?found.value:''; }
 
 /* ---- 안내멘트 · 이벤트 BGM ---- */
 function ensureAnnouncements(){ if(!adminDraft.announcements) adminDraft.announcements=[]; return adminDraft.announcements; }
@@ -2505,6 +2610,12 @@ function renderAdminForm(){
       ${z.schedule?`<button type="button" class="addRowBtn" style="color:var(--bad);border-color:var(--bad-soft);" onclick="collectDraftFromForm();adminDraft.schedule=null;renderAdminForm();">스케줄 전체 삭제(이벤트성으로 전환)</button>`:`<button type="button" class="addRowBtn" onclick="collectDraftFromForm();adminDraft.schedule=[{s:'00:00',e:'24:00',g:''}];renderAdminForm();">스케줄 사용 시작</button>`}
     </div>
     <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+      <label>안내멘트 · 이벤트 BGM</label>
+      <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역에서 나가는 안내방송 멘트나 이벤트용 BGM을 송출시간과 함께 기록합니다.</p>
+      <div id="announcementsEditor">${(z.announcements||[]).map((a,i)=>announcementRowHtml(a,i)).join('') || '<p class="zoneListEmpty">등록된 안내멘트·이벤트 BGM이 없습니다.</p>'}</div>
+      <button type="button" class="addRowBtn" onclick="addAnnouncement()">+ 안내멘트 · 이벤트 BGM 추가</button>
+    </div>
+    <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
       <div class="artToggleRow">
         <input type="checkbox" id="f_eventActive" ${z.eventActive?'checked':''}>
         <label style="margin:0;font-size:12.5px;font-weight:700;color:var(--text);">🎉 지금 이벤트 진행 중 — 화면에 이벤트 스케줄 표시</label>
@@ -2563,15 +2674,18 @@ function renderAdminForm(){
         </div>
       </div>
       <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>시간대별 기준 페이더 (매트릭스 탭에 주간/야간으로 짧게 표시됨)</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">위 "공간별 기준 페이더"는 지도 탭 상세 화면에 공간별로 자세히 표시되고, 여기 값은 매트릭스 탭에 주간/야간처럼 짧게 요약해 보여주는 용도입니다.</p>
+        <div id="faderTimeSpotsEditor">${(z.faderTimeSpots||[]).map((v,vi)=>luxValueRowHtml(v,vi,(zCat&&zCat.lux&&zCat.lux.timeSlots)||[],`removeFaderTimeSpotValue(${vi})`)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대별 기준 페이더가 없습니다.</p>'}</div>
+        <div class="toolRow" style="margin-top:6px;">
+          ${((z.faderTimeSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addFaderTimeSpotValue()">+ 시간대 페이더값 추가</button>` : ''}
+          <button type="button" class="btnGhost" onclick="addZoneTimeSlot()">+ 새 시간대 만들기</button>
+        </div>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
         <label>요일별 운영시간 · 브레이크타임</label>
         <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">요일마다 다른 운영시간을 넣거나, 영업 중간에 브레이크타임 구간을 표시할 수 있습니다. 지도 탭 타임라인의 빗금·문구에 그대로 반영됩니다. 비워두면 위 "기본 정보"의 평일/주말 텍스트에서 자동으로 가져옵니다.</p>
         <div id="hoursByDayEditor">${hoursByDayEditorHtml()}</div>
-      </div>
-      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
-        <label>안내멘트 · 이벤트 BGM</label>
-        <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역에서 나가는 안내방송 멘트나 이벤트용 BGM을 송출시간과 함께 기록합니다.</p>
-        <div id="announcementsEditor">${(z.announcements||[]).map((a,i)=>announcementRowHtml(a,i)).join('') || '<p class="zoneListEmpty">등록된 안내멘트·이벤트 BGM이 없습니다.</p>'}</div>
-        <button type="button" class="addRowBtn" onclick="addAnnouncement()">+ 안내멘트 · 이벤트 BGM 추가</button>
       </div>
     </div>
     <div class="saveRow">
@@ -2586,7 +2700,7 @@ function addNewZone(){
   const z = {id, wing:WINGS[0].id, floor:(adminFloor||(FLOORS[0]&&FLOORS[0].id)), order:ZONES.length, mapX:50, mapY:50, pinSize:DEFAULT_PIN_SIZE, name:'새 구역', nameEn:'', category:CATEGORIES[0].id,
     persona:'', moodGoal:'', operating:{weekday:'', weekend:''}, schedule:[{s:'00:00',e:'24:00',g:''}], dbNote:'', faderNote:'', art:null,
     eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[],
-    faderSpots:[], dbSpots:[], announcements:[], extraFloors:[], hoursByDay:null};
+    faderSpots:[], dbSpots:[], faderTimeSpots:[], announcements:[], extraFloors:[], hoursByDay:null};
   ZONES.push(z);
   adminSelectedId=id; adminDraft=cloneZone(z);
   renderAdminList(); renderAdminForm(); renderAdminMap();
@@ -2647,15 +2761,15 @@ function collectDraftFromForm(){
   if(document.getElementById('dbSpotsEditor')){
     adminDraft.dbSpots = [...document.querySelectorAll('#dbSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
   }
+  if(document.getElementById('faderTimeSpotsEditor')){
+    adminDraft.faderTimeSpots = [...document.querySelectorAll('#faderTimeSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
+  }
   if(document.getElementById('announcementsEditor')){
     adminDraft.announcements = [...document.querySelectorAll('#announcementsEditor .announceRow')].map(readAnnouncementRow);
   }
-  if(document.getElementById('hoursByDayEditor')){
-    ensureHoursByDay();
-    DAY_KEYS.forEach(day=>{
-      const wrap=document.querySelector('.hrRows_'+day);
-      if(wrap) adminDraft.hoursByDay[day] = [...wrap.querySelectorAll('.hr-row')].map(readHourRangeRow);
-    });
+  if(document.getElementById('hoursByDayEditor') && hourGroupsUI){
+    collectHourGroupsFromDom_();
+    expandGroupsToHoursByDay_();
   }
   if(adminDraft.schedule){
     const rows=[...document.querySelectorAll('#schedEditor .schedRow')];
@@ -2711,6 +2825,7 @@ function resetZoneToSeed(){
   const seed=SEED_ZONES.find(z=>z.id===adminSelectedId);
   if(!seed) return;
   adminDraft=cloneZone(seed);
+  hourGroupsUI=null;
   renderAdminForm();
   toast('초기값으로 되돌렸습니다 — 저장하기를 눌러야 반영됩니다');
 }
@@ -3104,7 +3219,7 @@ const UITEXT_FIELDS = [
     {key:"matrixEyebrow", label:"소제목(eyebrow)"}, {key:"matrixTitle", label:"제목"}, {key:"matrixDesc", label:"설명", long:true},
     {key:"colWing", label:"열 제목 — 동(棟)"}, {key:"colName", label:"열 제목 — 구역"}, {key:"colCategory", label:"열 제목 — 카테고리"},
     {key:"colStatus", label:"열 제목 — 상태"}, {key:"colGenre", label:"열 제목 — 지금 장르"}, {key:"colBaseGenre", label:"열 제목 — 원래(정규) 장르"}, {key:"colEventNote", label:"열 제목 — 이벤트 사유"},
-    {key:"colFader", label:"열 제목 — 기준 페이더"}, {key:"colDbDay", label:"열 제목 — 주간 dB"}, {key:"colDbNight", label:"열 제목 — 야간 dB"},
+    {key:"colFaderDay", label:"열 제목 — 주간 페이더"}, {key:"colFaderNight", label:"열 제목 — 야간 페이더"}, {key:"colDbDay", label:"열 제목 — 주간 dB"}, {key:"colDbNight", label:"열 제목 — 야간 dB"},
     {key:"colDb", label:"열 제목 — 음압(dB) 기준"}, {key:"colLux", label:"열 제목 — 조도 제안"}, {key:"colLightSetting", label:"열 제목 — 조명별 설정값"}
   ]},
   {group:"매장 운영 상태 문구", fields:[
