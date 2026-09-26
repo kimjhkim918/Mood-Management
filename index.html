@@ -357,6 +357,11 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .opRangeRow{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .opRangeRow input{width:84px;padding:7px 9px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.6px;}
 .announceRow{border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--surface-2);}
+.faderChipRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.faderChip{flex:0 0 auto;min-width:92px;max-width:160px;border:1px solid var(--border-strong);border-radius:9px;padding:8px 10px;background:var(--surface-2);}
+.faderChipName{font-size:11.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.faderChipValue{font-size:13px;font-weight:700;color:var(--accent-strong);margin-top:2px;}
+.faderChipMemo{font-size:10.5px;color:var(--text-muted);margin-top:3px;line-height:1.35;}
 .dayCheckRow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
 .dayCheckRow label{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border:1px solid var(--border-strong);border-radius:99px;padding:5px 10px;cursor:pointer;}
 .addRowBtn{font-size:12px;font-weight:700;color:var(--accent-strong);background:none;border:1px dashed var(--border-strong);border-radius:8px;padding:7px 12px;cursor:pointer;margin-top:4px;margin-right:6px;}
@@ -1679,6 +1684,8 @@ function renderPanel(z){
   const usingEvent = !!z.eventActive;
   const sched = activeScheduleOf(z);
   const eventBannerHtml = usingEvent ? `<div class="eventBanner">🎉 이벤트 모드 진행 중${z.eventNote?' — '+z.eventNote:''}</div>` : '';
+  const dbNow = zoneCurrentDb(z,cat,minute) || (z.dbNote||'').split(' — ')[0];
+  const faderDisplay = zoneCurrentFader(z,cat,minute) || (z.faderNote||'-');
   let nowHtml, timelineHtml, tableHtml;
   if(sched && sched.length){
     const cur=blockAt(sched,minute); const tags=tagFor(cur.g);
@@ -1688,9 +1695,9 @@ function renderPanel(z){
         <div class="chips">${tags.map(t=>`<span class="chip">${t.label} · ${t.mood}</span>`).join('')}</div>
         <div class="metrics">
           <div class="metric"><div class="k">참고 BPM</div><div class="v">${tags[0].bpm}</div></div>
-          <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${(z.dbNote||'').split(' — ')[0]}</div></div>
+          <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${dbNow||'-'}</div></div>
           <div class="metric"><div class="k">조도(현재대)</div><div class="v" style="font-size:11px;">${zoneCurrentLux(z,cat,minute)}</div></div>
-          <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${z.faderNote||'-'}</div></div>
+          <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
         </div></div>`;
     const segs=sched.map(b=>{ let s=toMin(b.s),e=toMin(b.e); let dur=e>s?e-s:(1440-s+e); return `<div class="seg genreHover" data-genre="${(b.g||'').replace(/"/g,'&quot;')}" data-time="${b.s}-${b.e}" style="width:${dur/1440*100}%;background:${b.color||colorFor(b.g)}"></div>`; }).join('');
     const opRanges = operatingRangesFor(z,panelDay);
@@ -1712,6 +1719,8 @@ function renderPanel(z){
     timelineHtml=''; tableHtml='';
   }
   const announceHtml = (z.announcements&&z.announcements.length) ? `<div class="infoblock"><h4>안내멘트 · 이벤트 BGM</h4>${z.announcements.map(a=>`<p class="muted"><b style="color:var(--text);">[${a.type==='eventBgm'?'이벤트 BGM':'안내멘트'}${a.time?' · '+a.time:''}]</b> ${a.text||'-'}</p>`).join('')}</div>` : '';
+  const dbSpotsHtml = (z.dbSpots&&z.dbSpots.length) ? `<p class="muted">${z.dbSpots.map(v=>{ const s=((cat&&cat.lux&&cat.lux.timeSlots)||[]).find(t=>t.id===v.slotId); return (s?s.label:v.slotId)+': '+(v.value||'-'); }).join(' · ')}</p>` : '';
+  const faderSpotsHtml = (z.faderSpots&&z.faderSpots.length) ? `<div class="infoblock"><h4>공간별 기준 페이더</h4><div class="faderChipRow">${z.faderSpots.map(v=>`<div class="faderChip"><div class="faderChipName">${v.name||'-'}</div><div class="faderChipValue">${v.value||'-'}</div>${v.memo?`<div class="faderChipMemo">${v.memo}</div>`:''}</div>`).join('')}</div></div>` : '';
   panel.innerHTML = `
     <div class="panel-head"><h3>${z.name}</h3></div>
     <div class="panel-en">${z.nameEn}</div>
@@ -1723,7 +1732,8 @@ function renderPanel(z){
     ${timelineHtml}${tableHtml}
     ${announceHtml}
     <div class="infoblock"><h4>타깃 페르소나 / 목표 무드</h4><p>${z.persona||'-'}</p><p class="muted">${z.moodGoal||''}</p></div>
-    <div class="infoblock"><h4>음압(dB) 근거</h4><p class="muted">${z.dbNote||'-'}</p></div>
+    <div class="infoblock"><h4>음압(dB) 근거</h4>${dbSpotsHtml}<p class="muted">${z.dbNote||'-'}</p></div>
+    ${faderSpotsHtml}
     <div class="infoblock"><h4>조도(럭스) 기준 — ${categoryLabel(z.category)}</h4>
       <p class="muted">전체 기준 · 지금(${curSlot?curSlot.label:'-'}) ${zoneCurrentLux(z,cat,minute)}</p>
       ${lightSpotsViewHtml(z,cat,curSlot?curSlot.id:null)}
@@ -2248,6 +2258,60 @@ function ensureOpHours(){ if(!adminDraft.operatingHours) adminDraft.operatingHou
 function addOpRangeRow(field){ collectDraftFromForm(); ensureOpHours(); if(!adminDraft.operatingHours[field]) adminDraft.operatingHours[field]=[]; adminDraft.operatingHours[field].push({s:'09:00',e:'18:00'}); renderAdminForm(); }
 function removeOpRangeRow(i,field){ collectDraftFromForm(); adminDraft.operatingHours[field].splice(i,1); renderAdminForm(); }
 
+/* ---- 구역 안 공간별 기준 페이더 값 ---- */
+function ensureFaderSpots(){ if(!adminDraft.faderSpots) adminDraft.faderSpots=[]; return adminDraft.faderSpots; }
+function addFaderSpot(){ collectDraftFromForm(); ensureFaderSpots().push({id:'fd-'+Math.random().toString(36).slice(2,8), name:'', value:'', memo:''}); renderAdminForm(); }
+function removeFaderSpot(i){ collectDraftFromForm(); ensureFaderSpots().splice(i,1); renderAdminForm(); }
+function readFaderSpotRow(row){ return {id:row.dataset.id, name:row.querySelector('.fd-name').value, value:row.querySelector('.fd-value').value, memo:row.querySelector('.fd-memo').value}; }
+function faderSpotRowHtml(v,i){
+  return `<div class="faderSpotRow" data-id="${v.id||''}" data-i="${i}">
+    <div class="fieldrow">
+      <div class="field"><label>공간 이름</label><input type="text" class="fd-name" value="${(v.name||'').replace(/"/g,'&quot;')}" placeholder="예: 라쿠 그룹석, 홀, 룸1"></div>
+      <div class="field"><label>기준 페이더 값</label><input type="text" class="fd-value" value="${(v.value||'').replace(/"/g,'&quot;')}" placeholder="예: -10dB"></div>
+    </div>
+    <div class="field"><label>메모 (조절 가능 여부 · 사유 등)</label><input type="text" class="fd-memo" value="${(v.memo||'').replace(/"/g,'&quot;')}" placeholder="예: 고객 요청으로 조절 가능"></div>
+    <div class="toolRow" style="justify-content:flex-end;"><button type="button" class="rmBtn" onclick="removeFaderSpot(${i})">×</button></div>
+  </div>`;
+}
+
+/* ---- 구역의 시간대별 dB(음압) ---- */
+function ensureDbSpots(){ if(!adminDraft.dbSpots) adminDraft.dbSpots=[]; return adminDraft.dbSpots; }
+function addDbSpotValue(){
+  collectDraftFromForm();
+  const cat=findCategory(adminDraft.category); if(!cat) return;
+  const list=ensureDbSpots();
+  const used=list.map(v=>v.slotId);
+  const next=(cat.lux.timeSlots||[]).find(s=>!used.includes(s.id));
+  if(!next){ toast('추가할 수 있는 시간대가 없습니다 — 이미 모든 시간대의 값이 있습니다'); return; }
+  list.push({slotId:next.id, value:''});
+  renderAdminForm();
+}
+function removeDbSpotValue(vi){ collectDraftFromForm(); ensureDbSpots().splice(vi,1); renderAdminForm(); }
+function zoneCurrentDb(z,cat,minute){
+  const slot=luxSlotForMinute(cat,minute);
+  if(slot){ const entry=(z.dbSpots||[]).find(v=>v.slotId===slot.id); if(entry && entry.value) return entry.value; }
+  return '';
+}
+
+/* ---- 구역의 시간대별 기준 페이더(매트릭스·요약용 — 공간별 상세와 별개) ---- */
+function ensureFaderTimeSpots(){ if(!adminDraft.faderTimeSpots) adminDraft.faderTimeSpots=[]; return adminDraft.faderTimeSpots; }
+function addFaderTimeSpotValue(){
+  collectDraftFromForm();
+  const cat=findCategory(adminDraft.category); if(!cat) return;
+  const list=ensureFaderTimeSpots();
+  const used=list.map(v=>v.slotId);
+  const next=(cat.lux.timeSlots||[]).find(s=>!used.includes(s.id));
+  if(!next){ toast('추가할 수 있는 시간대가 없습니다 — 이미 모든 시간대의 값이 있습니다'); return; }
+  list.push({slotId:next.id, value:''});
+  renderAdminForm();
+}
+function removeFaderTimeSpotValue(vi){ collectDraftFromForm(); ensureFaderTimeSpots().splice(vi,1); renderAdminForm(); }
+function zoneCurrentFader(z,cat,minute){
+  const slot=luxSlotForMinute(cat,minute);
+  if(slot){ const entry=(z.faderTimeSpots||[]).find(v=>v.slotId===slot.id); if(entry && entry.value) return entry.value; }
+  return '';
+}
+
 /* ---- 안내멘트 · 이벤트 BGM ---- */
 function ensureAnnouncements(){ if(!adminDraft.announcements) adminDraft.announcements=[]; return adminDraft.announcements; }
 function addAnnouncement(){ collectDraftFromForm(); ensureAnnouncements().push({id:'an-'+Math.random().toString(36).slice(2,8), type:'announcement', time:'', text:''}); renderAdminForm(); }
@@ -2301,6 +2365,7 @@ function renderAdminForm(){
     <div class="formTabs">
       <button type="button" class="formTabBtn ${zoneFormTab==='basic'?'active':''}" onclick="setZoneFormTab('basic')">기본 정보</button>
       <button type="button" class="formTabBtn ${zoneFormTab==='lighting'?'active':''}" onclick="setZoneFormTab('lighting')">💡 조명 · 조도</button>
+      <button type="button" class="formTabBtn ${zoneFormTab==='ops'?'active':''}" onclick="setZoneFormTab('ops')">🔊 페이더 · dB</button>
     </div>
     <div id="zoneTabBasic" ${zoneFormTab==='basic'?'':'hidden'}>
     <div class="fieldrow">
@@ -2418,6 +2483,30 @@ function renderAdminForm(){
         <button type="button" class="addRowBtn" onclick="addLightSpot()">+ 상세 위치 추가</button>
       </div>
     </div>
+    <div id="zoneTabOps" ${zoneFormTab==='ops'?'':'hidden'}>
+      <div class="field">
+        <label>공간별 기준 페이더 값 + 메모</label>
+        <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역 안에서 공간(그룹석·홀·룸 등)마다 기준 페이더 값이 다를 때 각각 등록합니다. 값을 유동적으로 조절하는 경우 메모에 사유를 남기세요.</p>
+        <div id="faderSpotsEditor">${(z.faderSpots||[]).map((v,i)=>faderSpotRowHtml(v,i)).join('') || '<p class="zoneListEmpty">등록된 공간별 페이더 값이 없습니다.</p>'}</div>
+        <button type="button" class="addRowBtn" onclick="addFaderSpot()">+ 공간별 페이더 추가</button>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>시간대별 음압(dB) 기록</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">주간/저녁/야간 등 시간대별로 실측·기준 dB 값을 기록합니다. 지도 탭과 매트릭스 탭에 그대로 표시됩니다.</p>
+        <div id="dbSpotsEditor">${(z.dbSpots||[]).map((v,vi)=>luxValueRowHtml(v,vi,(zCat&&zCat.lux&&zCat.lux.timeSlots)||[],`removeDbSpotValue(${vi})`)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대별 dB 값이 없습니다.</p>'}</div>
+        <div class="toolRow" style="margin-top:6px;">
+          ${((z.dbSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addDbSpotValue()">+ 시간대 dB값 추가</button>` : ''}
+        </div>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>시간대별 기준 페이더 (매트릭스 탭에 짧게 표시됨)</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">위 "공간별 기준 페이더"는 지도 탭 상세 화면에 공간별로 자세히 표시되고, 여기 값은 매트릭스 탭 등에 시간대별로 짧게 요약해 보여주는 용도입니다.</p>
+        <div id="faderTimeSpotsEditor">${(z.faderTimeSpots||[]).map((v,vi)=>luxValueRowHtml(v,vi,(zCat&&zCat.lux&&zCat.lux.timeSlots)||[],`removeFaderTimeSpotValue(${vi})`)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대별 기준 페이더가 없습니다.</p>'}</div>
+        <div class="toolRow" style="margin-top:6px;">
+          ${((z.faderTimeSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addFaderTimeSpotValue()">+ 시간대 페이더값 추가</button>` : ''}
+        </div>
+      </div>
+    </div>
     <div class="saveRow">
       <button class="btnPrimary" onclick="saveZone()">저장하기</button>
       ${SEED_ZONES.some(s=>s.id===z.id) ? `<button class="btnGhost" onclick="resetZoneToSeed()">초기값으로 되돌리기</button>` : ''}
@@ -2429,7 +2518,7 @@ function addNewZone(){
   const id = 'zone-' + Date.now().toString(36);
   const z = {id, wing:WINGS[0].id, floor:(adminFloor||(FLOORS[0]&&FLOORS[0].id)), order:ZONES.length, mapX:50, mapY:50, pinSize:DEFAULT_PIN_SIZE, name:'새 구역', nameEn:'', category:CATEGORIES[0].id,
     persona:'', moodGoal:'', operating:{weekday:'', weekend:''}, schedule:[{s:'00:00',e:'24:00',g:''}], dbNote:'', faderNote:'', art:null,
-    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[]};
+    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[], faderSpots:[], dbSpots:[], faderTimeSpots:[]};
   ZONES.push(z);
   adminSelectedId=id; adminDraft=cloneZone(z);
   renderAdminList(); renderAdminForm(); renderAdminMap();
@@ -2501,6 +2590,15 @@ function collectDraftFromForm(){
   }
   if(document.getElementById('announcementsEditor')){
     adminDraft.announcements = [...document.querySelectorAll('#announcementsEditor .announceRow')].map(readAnnouncementRow);
+  }
+  if(document.getElementById('faderSpotsEditor')){
+    adminDraft.faderSpots = [...document.querySelectorAll('#faderSpotsEditor .faderSpotRow')].map(readFaderSpotRow);
+  }
+  if(document.getElementById('dbSpotsEditor')){
+    adminDraft.dbSpots = [...document.querySelectorAll('#dbSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
+  }
+  if(document.getElementById('faderTimeSpotsEditor')){
+    adminDraft.faderTimeSpots = [...document.querySelectorAll('#faderTimeSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
   }
 }
 
