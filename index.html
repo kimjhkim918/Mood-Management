@@ -356,6 +356,9 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .rmBtn{border:none;background:var(--bad-soft);color:var(--bad);width:30px;height:30px;border-radius:7px;cursor:pointer;font-weight:700;}
 .opRangeRow{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .opRangeRow input{width:84px;padding:7px 9px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.6px;}
+.announceRow{border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--surface-2);}
+.dayCheckRow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.dayCheckRow label{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border:1px solid var(--border-strong);border-radius:99px;padding:5px 10px;cursor:pointer;}
 .addRowBtn{font-size:12px;font-weight:700;color:var(--accent-strong);background:none;border:1px dashed var(--border-strong);border-radius:8px;padding:7px 12px;cursor:pointer;margin-top:4px;margin-right:6px;}
 .saveRow{display:flex;gap:10px;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border);flex-wrap:wrap;}
 .toolRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
@@ -1376,26 +1379,34 @@ function handleAdminMapImageUpload(fileInput){ handleFloorImageUpload(fileInput,
 function handleAdminMapImageReset(){ resetFloorImage(adminFloor); }
 const DEFAULT_PIN_SIZE=9;
 
+function pinPositionFor(z, floorId){
+  const own = zoneFloor(z);
+  if(!floorId || own===floorId) return {ref:z, mapX:z.mapX, mapY:z.mapY, pinSize:z.pinSize, pinColor:z.pinColor, isExtra:false};
+  const ex=(z.extraFloors||[]).find(e=>e.floorId===floorId);
+  if(!ex) return null;
+  return {ref:ex, mapX:ex.mapX!=null?ex.mapX:50, mapY:ex.mapY!=null?ex.mapY:50, pinSize:ex.pinSize!=null?ex.pinSize:z.pinSize, pinColor: ex.pinColor!==undefined?ex.pinColor:z.pinColor, isExtra:true};
+}
 function buildMapSVG(svg, editable, floorId){
   if(!svg) return;
   svg.innerHTML=''; const NS='http://www.w3.org/2000/svg';
-  const list = floorId ? ZONES.filter(z=>zoneFloor(z)===floorId) : ZONES;
+  const entries=[];
+  ZONES.forEach(z=>{ const pos = floorId ? pinPositionFor(z,floorId) : {ref:z, mapX:z.mapX, mapY:z.mapY, pinSize:z.pinSize, pinColor:z.pinColor, isExtra:false}; if(pos) entries.push({z,pos}); });
 
-  list.forEach(z=>{
-    const x=(z.mapX!=null?z.mapX:50)/100*MAP_W;
-    const y=(z.mapY!=null?z.mapY:50)/100*MAP_H;
-    const size = z.pinSize!=null ? z.pinSize : DEFAULT_PIN_SIZE;
+  entries.forEach(({z,pos})=>{
+    const x=(pos.mapX!=null?pos.mapX:50)/100*MAP_W;
+    const y=(pos.mapY!=null?pos.mapY:50)/100*MAP_H;
+    const size = pos.pinSize!=null ? pos.pinSize : DEFAULT_PIN_SIZE;
     const dimmed = !editable && !matchesFilters(z);
     const selected = editable ? (adminSelectedId===z.id) : !!(state.selected && state.selected.id===z.id);
     const g=document.createElementNS(NS,'g');
-    g.setAttribute('class','mapPin'+(editable?' editable':'')+(dimmed?' dim':''));
+    g.setAttribute('class','mapPin'+(editable?' editable':'')+(dimmed?' dim':'')+(pos.isExtra?' extraFloorPin':''));
     g.dataset.zoneId=z.id;
     let inner = '';
     const zSched=activeScheduleOf(z);
     const isOn = !!(zSched && zSched.length);
-    const pinFill = isOn ? (z.pinColor || 'var(--accent)') : 'var(--mute-c)';
+    const pinFill = isOn ? (pos.pinColor || 'var(--accent)') : 'var(--mute-c)';
     if(selected) inner += `<circle cx="${x}" cy="${y}" r="${size+6}" class="pinRing" style="stroke:${isOn?pinFill:'var(--accent)'}"/>`;
-    inner += `<circle cx="${x}" cy="${y}" r="${size}" class="pinDot" style="fill:${pinFill}" data-role="drag"></circle>`;
+    inner += `<circle cx="${x}" cy="${y}" r="${size}" class="pinDot" style="fill:${pinFill};${pos.isExtra?'stroke:var(--accent-strong);stroke-width:1.5;stroke-dasharray:2,2;':''}" data-role="drag"></circle>`;
     if(editable && selected){
       const off=(size+9)*Math.SQRT1_2;
       inner += `<circle cx="${x+off}" cy="${y+off}" r="6.5" class="pinHandle" data-role="resize"></circle>`;
@@ -1410,9 +1421,9 @@ function buildMapSVG(svg, editable, floorId){
 
     const dragHandle=g.querySelector('[data-role="drag"]');
     if(editable){
-      dragHandle.addEventListener('pointerdown',e=>startPinDrag(e,z,svg,g,'move'));
+      dragHandle.addEventListener('pointerdown',e=>startPinDrag(e,z,svg,g,'move',pos));
       const resizeHandle=g.querySelector('[data-role="resize"]');
-      if(resizeHandle){ resizeHandle.addEventListener('pointerdown',e=>{ e.stopPropagation(); startPinDrag(e,z,svg,g,'resize'); }); }
+      if(resizeHandle){ resizeHandle.addEventListener('pointerdown',e=>{ e.stopPropagation(); startPinDrag(e,z,svg,g,'resize',pos); }); }
       g.addEventListener('click',()=>{ if(pinDragMoved) return; adminSelectedId=z.id; adminDraft=cloneZone(z); renderAdminList(); renderAdminForm(); renderAdminMap(); });
     } else {
       dragHandle.addEventListener('click',()=>selectZone(z.id));
@@ -1452,7 +1463,7 @@ function renderMap(){
 }
 function renderZoneList(){
   const wrap=document.getElementById('zoneListWrap'); if(!wrap) return;
-  const floorZones = ZONES.filter(z=>zoneFloor(z)===state.floor && matchesFilters(z));
+  const floorZones = ZONES.filter(z=>(zoneFloor(z)===state.floor || (z.extraFloors||[]).some(e=>e.floorId===state.floor)) && matchesFilters(z));
   const headingTxt = state.filter ? categoryLabel(state.filter) : '전체 구역';
   if(!floorZones.length){
     wrap.innerHTML = `<div class="zoneListHead">${headingTxt} · 0개 구역</div><p class="zoneListEmpty">이 층·조건에 맞는 구역이 없습니다.</p>`;
@@ -1507,10 +1518,10 @@ function svgPointFromEvent(svg, evt){
   const loc=pt.matrixTransform(ctm.inverse());
   return {x:loc.x, y:loc.y};
 }
-function startPinDrag(e,zone,svg,g,mode){
+function startPinDrag(e,zone,svg,g,mode,pos){
   e.preventDefault(); e.stopPropagation();
   pinDragMoved=false;
-  pinDragState={zone,svg,mode};
+  pinDragState={zone,svg,mode,pos};
   try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
   g.classList.add('dragging');
   window.addEventListener('pointermove',onPinDragMove);
@@ -1519,26 +1530,31 @@ function startPinDrag(e,zone,svg,g,mode){
 function onPinDragMove(e){
   if(!pinDragState) return;
   pinDragMoved=true;
-  const {zone,svg,mode}=pinDragState;
+  const {zone,svg,mode,pos}=pinDragState;
+  const ref = pos ? pos.ref : zone;
   const p=svgPointFromEvent(svg,e);
   if(mode==='move'){
-    zone.mapX = Math.round(Math.max(0,Math.min(100,p.x/MAP_W*100))*10)/10;
-    zone.mapY = Math.round(Math.max(0,Math.min(100,p.y/MAP_H*100))*10)/10;
+    ref.mapX = Math.round(Math.max(0,Math.min(100,p.x/MAP_W*100))*10)/10;
+    ref.mapY = Math.round(Math.max(0,Math.min(100,p.y/MAP_H*100))*10)/10;
   } else {
-    const cx=(zone.mapX/100)*MAP_W, cy=(zone.mapY/100)*MAP_H;
+    const curX = ref.mapX!=null?ref.mapX:50, curY = ref.mapY!=null?ref.mapY:50;
+    const cx=(curX/100)*MAP_W, cy=(curY/100)*MAP_H;
     const dist=Math.hypot(p.x-cx,p.y-cy)/Math.SQRT1_2;
-    zone.pinSize = Math.round(Math.max(4,Math.min(24,dist)));
+    ref.pinSize = Math.round(Math.max(4,Math.min(24,dist)));
   }
-  if(adminDraft && adminDraft.id===zone.id){ adminDraft.mapX=zone.mapX; adminDraft.mapY=zone.mapY; adminDraft.pinSize=zone.pinSize; syncPositionFieldsUI(); }
+  if(!pos || !pos.isExtra){
+    if(adminDraft && adminDraft.id===zone.id){ adminDraft.mapX=ref.mapX; adminDraft.mapY=ref.mapY; adminDraft.pinSize=ref.pinSize; syncPositionFieldsUI(); }
+  }
   renderAdminMap();
 }
 function onPinDragEnd(){
   if(!pinDragState) return;
-  const {zone}=pinDragState;
+  const {zone,pos}=pinDragState;
   window.removeEventListener('pointermove',onPinDragMove);
   window.removeEventListener('pointerup',onPinDragEnd);
   pinDragState=null;
-  persistZonePatch(zone.id, {mapX:zone.mapX, mapY:zone.mapY, pinSize:zone.pinSize});
+  if(pos && pos.isExtra){ persistZonePatch(zone.id, {extraFloors:(zone.extraFloors||[]).map(v=>({...v}))}); }
+  else { persistZonePatch(zone.id, {mapX:zone.mapX, mapY:zone.mapY, pinSize:zone.pinSize}); }
   setTimeout(()=>{ pinDragMoved=false; },0);
 }
 function syncPositionFieldsUI(){
@@ -1695,6 +1711,7 @@ function renderPanel(z){
     nowHtml = `<div class="nowcard"><div class="row1"><span class="tag" style="color:var(--warn);"><span class="d" style="background:var(--warn);"></span>${label}</span></div><div class="genre">${genreTxt}</div><p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">${sub}</p></div>`;
     timelineHtml=''; tableHtml='';
   }
+  const announceHtml = (z.announcements&&z.announcements.length) ? `<div class="infoblock"><h4>안내멘트 · 이벤트 BGM</h4>${z.announcements.map(a=>`<p class="muted"><b style="color:var(--text);">[${a.type==='eventBgm'?'이벤트 BGM':'안내멘트'}${a.time?' · '+a.time:''}]</b> ${a.text||'-'}</p>`).join('')}</div>` : '';
   panel.innerHTML = `
     <div class="panel-head"><h3>${z.name}</h3></div>
     <div class="panel-en">${z.nameEn}</div>
@@ -1704,6 +1721,7 @@ function renderPanel(z){
     <div class="dayToggle"><button id="btnWeekday" class="${panelDay==='weekday'?'active':''}">평일</button><button id="btnWeekend" class="${panelDay==='weekend'?'active':''}">주말</button></div>
     <div class="infoblock" style="margin-top:0;padding-top:0;border-top:none;"><h4>운영시간</h4><p id="opText">${panelDay==='weekend'?z.operating.weekend:z.operating.weekday}</p></div>
     ${timelineHtml}${tableHtml}
+    ${announceHtml}
     <div class="infoblock"><h4>타깃 페르소나 / 목표 무드</h4><p>${z.persona||'-'}</p><p class="muted">${z.moodGoal||''}</p></div>
     <div class="infoblock"><h4>음압(dB) 근거</h4><p class="muted">${z.dbNote||'-'}</p></div>
     <div class="infoblock"><h4>조도(럭스) 기준 — ${categoryLabel(z.category)}</h4>
@@ -2230,6 +2248,45 @@ function ensureOpHours(){ if(!adminDraft.operatingHours) adminDraft.operatingHou
 function addOpRangeRow(field){ collectDraftFromForm(); ensureOpHours(); if(!adminDraft.operatingHours[field]) adminDraft.operatingHours[field]=[]; adminDraft.operatingHours[field].push({s:'09:00',e:'18:00'}); renderAdminForm(); }
 function removeOpRangeRow(i,field){ collectDraftFromForm(); adminDraft.operatingHours[field].splice(i,1); renderAdminForm(); }
 
+/* ---- 안내멘트 · 이벤트 BGM ---- */
+function ensureAnnouncements(){ if(!adminDraft.announcements) adminDraft.announcements=[]; return adminDraft.announcements; }
+function addAnnouncement(){ collectDraftFromForm(); ensureAnnouncements().push({id:'an-'+Math.random().toString(36).slice(2,8), type:'announcement', time:'', text:''}); renderAdminForm(); }
+function removeAnnouncement(i){ collectDraftFromForm(); ensureAnnouncements().splice(i,1); renderAdminForm(); }
+function readAnnouncementRow(row){ return {id:row.dataset.id, type:row.querySelector('.an-type').value, time:row.querySelector('.an-time').value, text:row.querySelector('.an-text').value}; }
+function announcementRowHtml(a,i){
+  return `<div class="announceRow" data-id="${a.id||''}" data-i="${i}">
+    <div class="fieldrow">
+      <div class="field" style="max-width:160px;"><label>구분</label><select class="an-type"><option value="announcement" ${a.type!=='eventBgm'?'selected':''}>안내멘트</option><option value="eventBgm" ${a.type==='eventBgm'?'selected':''}>이벤트 BGM</option></select></div>
+      <div class="field" style="max-width:180px;"><label>송출시간</label><input type="text" class="an-time" value="${(a.time||'').replace(/"/g,'&quot;')}" placeholder="예: 매시 정각 / 19:00~19:04"></div>
+    </div>
+    <div class="field"><label>멘트 · 내용</label><textarea class="an-text">${a.text||''}</textarea></div>
+    <div class="toolRow" style="justify-content:flex-end;"><button type="button" class="rmBtn" onclick="removeAnnouncement(${i})">×</button></div>
+  </div>`;
+}
+
+/* ---- 다른 층(예: 전체/기본층)에도 함께 표시 ---- */
+function ensureExtraFloors(){ if(!adminDraft.extraFloors) adminDraft.extraFloors=[]; return adminDraft.extraFloors; }
+function toggleExtraFloor(floorId,checked){
+  collectDraftFromForm();
+  const list=ensureExtraFloors();
+  const idx=list.findIndex(e=>e.floorId===floorId);
+  if(checked && idx<0){ list.push({floorId, mapX:adminDraft.mapX!=null?adminDraft.mapX:50, mapY:adminDraft.mapY!=null?adminDraft.mapY:50, pinSize:adminDraft.pinSize, pinColor:adminDraft.pinColor}); }
+  else if(!checked && idx>=0){ list.splice(idx,1); }
+  const zi=ZONES.findIndex(z=>z.id===adminDraft.id); if(zi>=0) ZONES[zi]={...ZONES[zi], extraFloors:list.map(v=>({...v}))};
+  persistZonePatch(adminDraft.id, {extraFloors:list.map(v=>({...v}))}, true);
+  renderAdminForm(); renderAdminMap();
+}
+function extraFloorsCheckboxHtml(){
+  const own=zoneFloor(adminDraft);
+  const list=ensureExtraFloors();
+  if(FLOORS.length<=1) return '<p class="muted" style="font-size:11.5px;">층이 1개뿐이라 추가로 표시할 다른 층이 없습니다.</p>';
+  const opts = FLOORS.filter(f=>f.id!==own).map(f=>{
+    const checked = list.some(e=>e.floorId===f.id);
+    return `<label><input type="checkbox" ${checked?'checked':''} onchange="toggleExtraFloor('${f.id}',this.checked)"> ${f.label}</label>`;
+  }).join('');
+  return `<div class="dayCheckRow">${opts}</div><p class="secdesc" style="margin:6px 0 0;max-width:none;font-size:11.5px;">체크한 층의 지도에도 이 구역 핀이 함께 표시됩니다. 그 층 지도 화면에서 핀을 드래그하면 그 층에서의 위치만 따로 저장되고, 원래 층(${(FLOORS.find(f=>f.id===own)||{label:'-'}).label})의 위치는 바뀌지 않습니다.</p>`;
+}
+
 function renderAdminForm(){
   const form=document.getElementById('adminForm'); if(!form) return;
   if(!adminDraft){ form.innerHTML='<div style="padding:40px;color:var(--text-muted);">← 왼쪽에서 구역을 선택하세요.</div>'; return; }
@@ -2269,6 +2326,11 @@ function renderAdminForm(){
         </div>
         <input type="color" id="f_pinColor" value="${z.pinColor||'#a8752c'}" oninput="livePositionInput()" ${z.pinColor?'':'disabled'} style="width:52px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;">
       </div>
+    </div>
+    <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+      <label>다른 층(예: 전체/기본층)에도 이 구역 표시</label>
+      <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">이 구역은 원래 "${(FLOORS.find(f=>f.id===zoneFloor(z))||{label:'-'}).label}"에 속해 있습니다. 아래에서 체크한 층의 지도에도 함께 표시되며, 그 층에서의 핀 위치는 원래 층과 별도로 저장됩니다.</p>
+      <div id="extraFloorsEditor">${extraFloorsCheckboxHtml()}</div>
     </div>
     <div class="fieldrow">
       <div class="field"><label>운영시간 — 평일</label><input type="text" id="f_opWeekday" value="${(z.operating&&z.operating.weekday||'').replace(/"/g,'&quot;')}"></div>
@@ -2312,6 +2374,12 @@ function renderAdminForm(){
       <div id="schedEditor">${(z.schedule||[]).map((b,i)=>schedRowHtml(b,i,(z.schedule||[]).length)).join('')}</div>
       <button type="button" class="addRowBtn" onclick="addSchedRow()">+ 시간대 추가</button>
       ${z.schedule?`<button type="button" class="addRowBtn" style="color:var(--bad);border-color:var(--bad-soft);" onclick="collectDraftFromForm();adminDraft.schedule=null;renderAdminForm();">스케줄 전체 삭제(이벤트성으로 전환)</button>`:`<button type="button" class="addRowBtn" onclick="collectDraftFromForm();adminDraft.schedule=[{s:'00:00',e:'24:00',g:''}];renderAdminForm();">스케줄 사용 시작</button>`}
+    </div>
+    <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+      <label>안내멘트 · 이벤트 BGM</label>
+      <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역에서 나가는 안내방송 멘트나 이벤트용 지정곡을 송출시간과 함께 기록합니다. (예: 19:00~19:04 지정곡1)</p>
+      <div id="announcementsEditor">${(z.announcements||[]).map((a,i)=>announcementRowHtml(a,i)).join('') || '<p class="zoneListEmpty">등록된 안내멘트·이벤트 BGM이 없습니다.</p>'}</div>
+      <button type="button" class="addRowBtn" onclick="addAnnouncement()">+ 안내멘트 · 이벤트 BGM 추가</button>
     </div>
     <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
       <div class="artToggleRow">
@@ -2361,7 +2429,7 @@ function addNewZone(){
   const id = 'zone-' + Date.now().toString(36);
   const z = {id, wing:WINGS[0].id, floor:(adminFloor||(FLOORS[0]&&FLOORS[0].id)), order:ZONES.length, mapX:50, mapY:50, pinSize:DEFAULT_PIN_SIZE, name:'새 구역', nameEn:'', category:CATEGORIES[0].id,
     persona:'', moodGoal:'', operating:{weekday:'', weekend:''}, schedule:[{s:'00:00',e:'24:00',g:''}], dbNote:'', faderNote:'', art:null,
-    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[]};
+    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[]};
   ZONES.push(z);
   adminSelectedId=id; adminDraft=cloneZone(z);
   renderAdminList(); renderAdminForm(); renderAdminMap();
@@ -2430,6 +2498,9 @@ function collectDraftFromForm(){
   const hasArtEl=document.getElementById('f_hasArt');
   if(hasArtEl){
     adminDraft.art = hasArtEl.checked ? {artist:document.getElementById('f_artist').value, piece:document.getElementById('f_piece').value, direction:document.getElementById('f_direction').value} : null;
+  }
+  if(document.getElementById('announcementsEditor')){
+    adminDraft.announcements = [...document.querySelectorAll('#announcementsEditor .announceRow')].map(readAnnouncementRow);
   }
 }
 
