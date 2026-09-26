@@ -356,7 +356,7 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .rmBtn{border:none;background:var(--bad-soft);color:var(--bad);width:30px;height:30px;border-radius:7px;cursor:pointer;font-weight:700;}
 .opRangeRow{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .opRangeRow input{width:84px;padding:7px 9px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.6px;}
-.announceRow{border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--surface-2);}
+.faderSpotRow,.dbSpotRow,.announceRow,.hoursDayRow{border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--surface-2);}
 .faderChipRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
 .faderChip{flex:0 0 auto;min-width:92px;max-width:160px;border:1px solid var(--border-strong);border-radius:9px;padding:8px 10px;background:var(--surface-2);}
 .faderChipName{font-size:11.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -376,6 +376,9 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .dbWarn{background:var(--warn-soft);color:var(--accent-strong);border:1px solid var(--border-strong);border-radius:10px;padding:10px 14px;font-size:12.4px;margin:14px 24px;}
 .cardEditor{border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--surface-2);}
 .cardEditor .rmRow{display:flex;justify-content:flex-end;margin-top:4px;}
+.colorPresetRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;}
+.colorSwatchBtn{width:20px;height:20px;border-radius:50%;border:1px solid var(--border-strong);cursor:pointer;padding:0;}
+.colorSwatchAdd{background:var(--surface-2);color:var(--text-muted);font-size:13px;font-weight:700;line-height:18px;}
 h3.formH{font-size:15px;margin:26px 0 14px;padding-top:20px;border-top:1px solid var(--border);}
 h3.formH:first-child{margin-top:0;padding-top:0;border-top:none;}
 </style>
@@ -1006,9 +1009,20 @@ const SEED_UITEXT = {
   modeUiTextLabel:"화면 문구"
 };
 
+const SEED_COLORPRESETS = [
+  {id:"cp-amber", name:"앰버(재즈)", hex:"#d8a15c"},
+  {id:"cp-sky", name:"스카이블루(하우스)", hex:"#7fb6d9"},
+  {id:"cp-rose", name:"로즈(팝)", hex:"#e78ca0"},
+  {id:"cp-sage", name:"세이지그린(뉴에이지)", hex:"#8fc79b"},
+  {id:"cp-tangerine", name:"탠저린(키즈)", hex:"#e8b165"},
+  {id:"cp-violet", name:"바이올렛(오케스트라)", hex:"#b3a0dd"},
+  {id:"cp-gold", name:"골드(강조/포인트)", hex:"#e0ac54"},
+  {id:"cp-slate", name:"슬레이트(무음/뮤트)", hex:"#544a37"}
+];
 const SEED_CONTENT = {
   genreGuide: SEED_GENREGUIDE,
-  uiText: SEED_UITEXT
+  uiText: SEED_UITEXT,
+  colorPresets: SEED_COLORPRESETS
 };
 
 const SEED_CHANNELS = [
@@ -1111,6 +1125,7 @@ function applyLocalOverrides(){
   if(co.wings && co.wings.items && co.wings.items.length){ WINGS=co.wings.items; localMode=true; }
   if(co.categories && co.categories.items && co.categories.items.length){ CATEGORIES=co.categories.items; localMode=true; }
   if(co.floors && co.floors.items && co.floors.items.length){ FLOORS=co.floors.items; localMode=true; }
+  if(co.colorPresets && co.colorPresets.items && co.colorPresets.items.length){ CONTENT.colorPresets=co.colorPresets.items; localMode=true; }
   const cho = loadChannelLocalOverrides();
   if(cho && Object.keys(cho).length){ CHANNELS = mergeChannels(cho); localMode = true; }
   try{ const savedMap = localStorage.getItem("pmc_map_image_v1"); if(savedMap){ customMapDataUrl=savedMap; localMode=true; } }catch(e){}
@@ -1171,6 +1186,7 @@ async function initDb(){
     db.doc('content/wings').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ WINGS=snap.data().items; onStructureChanged(); } }, err=>console.warn('wings snapshot error',err));
     db.doc('content/categories').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ CATEGORIES=snap.data().items; onStructureChanged(); } }, err=>console.warn('categories snapshot error',err));
     db.doc('content/floors').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ FLOORS=snap.data().items; onStructureChanged(); } }, err=>console.warn('floors snapshot error',err));
+    db.doc('content/colorPresets').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ CONTENT.colorPresets=snap.data().items; onStructureChanged(); } }, err=>console.warn('colorPresets snapshot error',err));
     db.collection('channels').onSnapshot(snap=>{
       const map={}; snap.docs.forEach(d=>{ if(d.exists) map[d.id]={...d.data(), id:d.id}; });
       CHANNELS = mergeChannels(map);
@@ -1641,11 +1657,14 @@ document.getElementById('searchInput').addEventListener('input',e=>{
   }
   renderMap();
 });
-let panelDay='weekday';
+const DAY_KEYS=['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_LABELS={mon:'월',tue:'화',wed:'수',thu:'목',fri:'금',sat:'토',sun:'일'};
+function dayKeyForDate(d){ return ['sun','mon','tue','wed','thu','fri','sat'][d.getDay()]; }
+let panelDay=null;
 function selectZone(id,resetPreview=true){
   state.selected = ZONES.find(z=>z.id===id);
   if(resetPreview){state.previewMin=null; state.followNow=true;}
-  panelDay='weekday';
+  panelDay=dayKeyForDate(new Date());
   renderMap(); renderPanel(state.selected);
 }
 function fmtMin(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); }
@@ -1675,9 +1694,25 @@ function closedSegsFromRanges(ranges){
   if(cursor<1440) closed.push([cursor,1440]);
   return closed;
 }
+function hourRangesForDay(z,dayKey){
+  if(z.hoursByDay && z.hoursByDay[dayKey] && z.hoursByDay[dayKey].length) return z.hoursByDay[dayKey];
+  const legacyKey=(dayKey==='sat'||dayKey==='sun')?'weekend':'weekday';
+  return operatingRangesFor(z,legacyKey).map(r=>({...r,type:'open'}));
+}
+function closedSegsWithLabels(z,dayKey){
+  const ranges=hourRangesForDay(z,dayKey);
+  const openRanges=ranges.filter(r=>r.type!=='break');
+  const breakRanges=ranges.filter(r=>r.type==='break');
+  const closed=closedSegsFromRanges(openRanges);
+  return closed.map(([s,e])=>{
+    const br=breakRanges.find(r=>{ let bs=toMin(r.s), be=toMin(r.e); if(be<=bs) be=1440; return bs<=s && be>=e; });
+    return {s,e,label: br?(br.label||'브레이크타임'):null};
+  });
+}
 function renderPanel(z){
   const panel=document.getElementById('panel'); if(!panel) return;
   if(!z){ const emptyTxt=((CONTENT.uiText&&CONTENT.uiText.panelEmptyText)||SEED_UITEXT.panelEmptyText).replace(/\n/g,'<br>'); panel.innerHTML='<div class="panel-empty">'+emptyTxt+'</div>'; return; }
+  if(!panelDay) panelDay=dayKeyForDate(new Date());
   const cat = findCategory(z.category);
   const minute=activeMin(); const isNowView=state.previewMin==null;
   const curSlot = luxSlotForMinute(cat,minute);
@@ -1700,10 +1735,10 @@ function renderPanel(z){
           <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
         </div></div>`;
     const segs=sched.map(b=>{ let s=toMin(b.s),e=toMin(b.e); let dur=e>s?e-s:(1440-s+e); return `<div class="seg genreHover" data-genre="${(b.g||'').replace(/"/g,'&quot;')}" data-time="${b.s}-${b.e}" style="width:${dur/1440*100}%;background:${b.color||colorFor(b.g)}"></div>`; }).join('');
-    const opRanges = operatingRangesFor(z,panelDay);
-    const closedSegs = closedSegsFromRanges(opRanges);
-    const opOverlayHtml = closedSegs.map(([s,e])=>`<div class="opClosed" style="left:${s/1440*100}%;width:${(e-s)/1440*100}%" title="매장 운영 전/후 — BGM만 송출 중"></div>`).join('');
-    const opLegendHtml = closedSegs.length ? `<div class="opLegend"><span class="sw sw-open"></span>매장 운영 중 <span class="sw sw-closed"></span>매장 운영 전·후 (BGM만 송출)${opRanges.length?` · 운영: ${opRanges.map(r=>r.s+'–'+r.e).join(', ')}`:''}</div>` : '';
+    const opRanges = hourRangesForDay(z,panelDay).filter(r=>r.type!=='break');
+    const closedSegs = closedSegsWithLabels(z,panelDay);
+    const opOverlayHtml = closedSegs.map(seg=>`<div class="opClosed" style="left:${seg.s/1440*100}%;width:${(seg.e-seg.s)/1440*100}%" title="${seg.label?seg.label:'매장 운영 전/후 — BGM만 송출 중'}"></div>`).join('');
+    const opLegendHtml = closedSegs.length ? `<div class="opLegend"><span class="sw sw-open"></span>매장 운영 중 <span class="sw sw-closed"></span>매장 운영 전·후 (BGM만 송출)${opRanges.length?` · 운영: ${opRanges.map(r=>r.s+'–'+r.e).join(', ')}`:''}${closedSegs.some(s=>s.label)?` · ${[...new Set(closedSegs.filter(s=>s.label).map(s=>s.label))].join(', ')}: ${closedSegs.filter(s=>s.label).map(s=>fmtMin(s.s)+'–'+fmtMin(s.e)).join(', ')}`:''}</div>` : '';
     timelineHtml = `<div class="timeline" id="timelineBar">${segs}${opOverlayHtml}<div class="now-marker" style="left:${minute/1440*100}%"></div></div>
       <div class="tlaxis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
       ${opLegendHtml}
@@ -1727,8 +1762,8 @@ function renderPanel(z){
     <div class="badges"><span class="badge acc">${categoryLabel(z.category)}</span><span class="badge">${(WINGS.find(w=>w.id===z.wing)||{title:''}).title.split(' · ')[0]}</span></div>
     ${eventBannerHtml}
     ${nowHtml}
-    <div class="dayToggle"><button id="btnWeekday" class="${panelDay==='weekday'?'active':''}">평일</button><button id="btnWeekend" class="${panelDay==='weekend'?'active':''}">주말</button></div>
-    <div class="infoblock" style="margin-top:0;padding-top:0;border-top:none;"><h4>운영시간</h4><p id="opText">${panelDay==='weekend'?z.operating.weekend:z.operating.weekday}</p></div>
+    <div class="dayToggle" id="dayToggleRow">${DAY_KEYS.map(d=>`<button data-day="${d}" class="${panelDay===d?'active':''}">${DAY_LABELS[d]}</button>`).join('')}</div>
+    <div class="infoblock" style="margin-top:0;padding-top:0;border-top:none;"><h4>운영시간</h4><p id="opText">${(panelDay==='sat'||panelDay==='sun')?z.operating.weekend:z.operating.weekday}</p></div>
     ${timelineHtml}${tableHtml}
     ${announceHtml}
     <div class="infoblock"><h4>타깃 페르소나 / 목표 무드</h4><p>${z.persona||'-'}</p><p class="muted">${z.moodGoal||''}</p></div>
@@ -1740,9 +1775,8 @@ function renderPanel(z){
     </div>
     ${(z.rainDbNote||z.rainLux)?`<div class="infoblock"><h4>☔ 우천시 기록</h4>${z.rainDbNote?`<p class="muted">음압(dB): ${z.rainDbNote}</p>`:''}${z.rainLux?`<p class="muted">조도: ${z.rainLux}</p>`:''}</div>`:''}
     ${z.art?`<div class="infoblock"><h4>소닉 브랜딩</h4><div class="artnote"><b>${z.art.artist}</b> — ${z.art.piece}<br>${z.art.direction}</div></div>`:''}`;
-  const wkBtn=document.getElementById('btnWeekday'), weBtn=document.getElementById('btnWeekend');
-  wkBtn.onclick=()=>{ panelDay='weekday'; renderPanel(z); };
-  weBtn.onclick=()=>{ panelDay='weekend'; renderPanel(z); };
+  const dayRow=document.getElementById('dayToggleRow');
+  if(dayRow){ dayRow.querySelectorAll('button').forEach(btn=>{ btn.onclick=()=>{ panelDay=btn.dataset.day; renderPanel(z); }; }); }
   const bar=document.getElementById('timelineBar');
   if(bar){ bar.addEventListener('click',e=>{ const rect=bar.getBoundingClientRect(); const pct=(e.clientX-rect.left)/rect.width; state.previewMin=Math.max(0,Math.min(1439,Math.round(pct*1440))); state.followNow=false; renderPanel(z); }); }
   const resetBtn=document.getElementById('resetNowBtn');
@@ -2312,6 +2346,141 @@ function zoneCurrentFader(z,cat,minute){
   return '';
 }
 
+/* ---- 요일별 운영시간 · 브레이크타임 ---- */
+function ensureHoursByDay(){
+  if(!adminDraft.hoursByDay){
+    const wk=(adminDraft.operatingHours&&adminDraft.operatingHours.weekday&&adminDraft.operatingHours.weekday.length)?adminDraft.operatingHours.weekday:parseOperatingText(adminDraft.operating&&adminDraft.operating.weekday);
+    const we=(adminDraft.operatingHours&&adminDraft.operatingHours.weekend&&adminDraft.operatingHours.weekend.length)?adminDraft.operatingHours.weekend:parseOperatingText(adminDraft.operating&&adminDraft.operating.weekend);
+    const mk=list=>(list||[]).map(r=>({s:r.s,e:r.e,type:'open',label:''}));
+    adminDraft.hoursByDay = {mon:mk(wk),tue:mk(wk),wed:mk(wk),thu:mk(wk),fri:mk(wk),sat:mk(we),sun:mk(we)};
+  }
+  return adminDraft.hoursByDay;
+}
+let hourGroupsUI = null; // {zoneId, groups:[{days:[...], ranges:[{s,e,type,label}]}]}
+function normalizeRangeForCompare_(r){ return (r.s||'')+'|'+(r.e||'')+'|'+(r.type||'open')+'|'+(r.label||''); }
+function rangesEqual_(a,b){ return JSON.stringify((a||[]).map(normalizeRangeForCompare_)) === JSON.stringify((b||[]).map(normalizeRangeForCompare_)); }
+function buildHourGroupsFromHoursByDay_(){
+  const hbd = ensureHoursByDay();
+  const groups = [];
+  DAY_KEYS.forEach(day=>{
+    const ranges = hbd[day]||[];
+    const existing = groups.find(g=>rangesEqual_(g.ranges, ranges));
+    if(existing) existing.days.push(day);
+    else groups.push({days:[day], ranges: ranges.map(r=>({...r}))});
+  });
+  return groups;
+}
+function ensureHourGroupsUI(){
+  if(!hourGroupsUI || hourGroupsUI.zoneId !== adminDraft.id){
+    hourGroupsUI = { zoneId: adminDraft.id, groups: buildHourGroupsFromHoursByDay_() };
+  }
+  return hourGroupsUI.groups;
+}
+function collectHourGroupsFromDom_(){
+  if(!hourGroupsUI) return;
+  hourGroupsUI.groups.forEach((g,gi)=>{
+    const wrap=document.querySelector('.hgRows_'+gi);
+    if(wrap) g.ranges = [...wrap.querySelectorAll('.hg-row')].map(row=>({
+      s:row.querySelector('.hr-s').value.trim(), e:row.querySelector('.hr-e').value.trim(),
+      type:row.querySelector('.hr-type').value, label:row.querySelector('.hr-label').value.trim()
+    }));
+  });
+}
+function expandGroupsToHoursByDay_(){
+  ensureHoursByDay();
+  const assigned = new Set();
+  hourGroupsUI.groups.forEach(g=>{ g.days.forEach(d=>{ assigned.add(d); adminDraft.hoursByDay[d]=g.ranges.map(r=>({...r})); }); });
+  DAY_KEYS.forEach(d=>{ if(!assigned.has(d)) adminDraft.hoursByDay[d]=[]; });
+}
+function toggleHourGroupDay(gi,day,checked){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.forEach((g,i)=>{ if(i!==gi){ const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); } });
+  const g=hourGroupsUI.groups[gi];
+  if(checked){ if(!g.days.includes(day)) g.days.push(day); }
+  else { const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroup(){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.push({days:[], ranges:[{s:'09:00',e:'18:00',type:'open',label:''}]});
+  renderAdminForm();
+}
+function removeHourGroup(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.splice(gi,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroupRange(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.push({s:'09:00',e:'18:00',type:'open',label:''});
+  renderAdminForm();
+}
+function removeHourGroupRange(gi,ri){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.splice(ri,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function applyHourPreset(name){
+  collectHourGroupsFromDom_();
+  expandGroupsToHoursByDay_();
+  if(name==='weekday_weekend'){
+    hourGroupsUI.groups = [
+      {days:['mon','tue','wed','thu','fri'], ranges:(adminDraft.hoursByDay.mon||[]).map(r=>({...r}))},
+      {days:['sat','sun'], ranges:(adminDraft.hoursByDay.sat||[]).map(r=>({...r}))}
+    ];
+  } else if(name==='each_day'){
+    hourGroupsUI.groups = DAY_KEYS.map(d=>({days:[d], ranges:(adminDraft.hoursByDay[d]||[]).map(r=>({...r}))}));
+  } else if(name==='all_same'){
+    const base=(adminDraft.hoursByDay.mon||[]).map(r=>({...r}));
+    hourGroupsUI.groups = [{days:[...DAY_KEYS], ranges:base}];
+  }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function hourGroupRangeRowHtml(r,gi,ri){
+  return `<div class="opRangeRow hg-row" data-ri="${ri}">
+    <input type="text" class="hr-s" value="${r.s}" placeholder="09:00" style="width:64px;">
+    <span style="color:var(--text-muted);">–</span>
+    <input type="text" class="hr-e" value="${r.e}" placeholder="18:00" style="width:64px;">
+    <select class="hr-type" style="max-width:112px;">
+      <option value="open" ${r.type!=='break'?'selected':''}>영업</option>
+      <option value="break" ${r.type==='break'?'selected':''}>브레이크타임</option>
+    </select>
+    <input type="text" class="hr-label" value="${(r.label||'').replace(/"/g,'&quot;')}" placeholder="메모(선택)" style="width:110px;">
+    <button type="button" class="rmBtn" onclick="removeHourGroupRange(${gi},${ri})">×</button>
+  </div>`;
+}
+function hourGroupRowHtml(g,gi){
+  const dayChecks = DAY_KEYS.map(d=>`<label><input type="checkbox" ${g.days.includes(d)?'checked':''} onchange="toggleHourGroupDay(${gi},'${d}',this.checked)"> ${DAY_LABELS[d]}</label>`).join('');
+  const rangesHtml = g.ranges.map((r,ri)=>hourGroupRangeRowHtml(r,gi,ri)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대가 없습니다(하루 종일 운영 전으로 표시됩니다).</p>';
+  return `<div class="hoursDayRow" data-gi="${gi}">
+    <div class="dayCheckRow">${dayChecks}</div>
+    <div class="hgRows_${gi}">${rangesHtml}</div>
+    <div class="toolRow" style="margin-top:8px;justify-content:space-between;">
+      <button type="button" class="addRowBtn" onclick="addHourGroupRange(${gi})">+ 시간대 추가</button>
+      <button type="button" class="rmBtn" onclick="removeHourGroup(${gi})">이 그룹 삭제</button>
+    </div>
+  </div>`;
+}
+function hoursByDayEditorHtml(){
+  const groups = ensureHourGroupsUI();
+  const assigned = new Set(); groups.forEach(g=>g.days.forEach(d=>assigned.add(d)));
+  const unassigned = DAY_KEYS.filter(d=>!assigned.has(d));
+  const warn = unassigned.length ? `<p class="muted" style="color:var(--bad);font-size:11.5px;margin:0 0 10px;">⚠ 아직 그룹에 포함되지 않은 요일: ${unassigned.map(d=>DAY_LABELS[d]).join(', ')} — 이 요일은 하루 종일 "운영 전"으로 표시됩니다. 아래에서 그룹에 체크해 넣어주세요.</p>` : '';
+  return `<p class="secdesc" style="margin:0 0 8px;max-width:none;font-size:11.5px;">같은 운영시간을 쓰는 요일끼리 그룹으로 묶어 한 번만 입력하면 됩니다. 요일마다 다르면 그룹을 나누고, 평일이 다 같으면 그룹 하나로 합치세요.</p>
+  <div class="toolRow" style="margin-bottom:10px;">
+    <button type="button" class="btnGhost" onclick="applyHourPreset('weekday_weekend')">평일 / 주말로 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('each_day')">요일별로 모두 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('all_same')">모든 요일 하나로 합치기</button>
+  </div>
+  ${warn}
+  <div id="hourGroupsList">${groups.map((g,gi)=>hourGroupRowHtml(g,gi)).join('')}</div>
+  <button type="button" class="addRowBtn" onclick="addHourGroup()">+ 새 그룹 추가(예: 목~월 / 화~수 처럼 원하는 요일끼리)</button>`;
+}
+
 /* ---- 안내멘트 · 이벤트 BGM ---- */
 function ensureAnnouncements(){ if(!adminDraft.announcements) adminDraft.announcements=[]; return adminDraft.announcements; }
 function addAnnouncement(){ collectDraftFromForm(); ensureAnnouncements().push({id:'an-'+Math.random().toString(36).slice(2,8), type:'announcement', time:'', text:''}); renderAdminForm(); }
@@ -2365,7 +2534,7 @@ function renderAdminForm(){
     <div class="formTabs">
       <button type="button" class="formTabBtn ${zoneFormTab==='basic'?'active':''}" onclick="setZoneFormTab('basic')">기본 정보</button>
       <button type="button" class="formTabBtn ${zoneFormTab==='lighting'?'active':''}" onclick="setZoneFormTab('lighting')">💡 조명 · 조도</button>
-      <button type="button" class="formTabBtn ${zoneFormTab==='ops'?'active':''}" onclick="setZoneFormTab('ops')">🔊 페이더 · dB</button>
+      <button type="button" class="formTabBtn ${zoneFormTab==='ops'?'active':''}" onclick="setZoneFormTab('ops')">🔊 페이더 · dB · 요일별 시간</button>
     </div>
     <div id="zoneTabBasic" ${zoneFormTab==='basic'?'':'hidden'}>
     <div class="fieldrow">
@@ -2390,6 +2559,7 @@ function renderAdminForm(){
           <label style="margin:0;font-size:12px;font-weight:700;color:var(--text);">이 구역만 다른 색으로 표시</label>
         </div>
         <input type="color" id="f_pinColor" value="${z.pinColor||'#a8752c'}" oninput="livePositionInput()" ${z.pinColor?'':'disabled'} style="width:52px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;">
+        ${colorPresetSwatchesHtml('f_pinColor')}
       </div>
     </div>
     <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
@@ -2506,6 +2676,11 @@ function renderAdminForm(){
           ${((z.faderTimeSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addFaderTimeSpotValue()">+ 시간대 페이더값 추가</button>` : ''}
         </div>
       </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>요일별 운영시간 · 브레이크타임</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">요일마다 다른 운영시간을 넣거나, 영업 중간에 브레이크타임 구간을 표시할 수 있습니다. 지도 탭 타임라인의 빗금·문구에 그대로 반영됩니다. 비워두면 "기본 정보"의 평일/주말 텍스트에서 자동으로 가져옵니다.</p>
+        <div id="hoursByDayEditor">${hoursByDayEditorHtml()}</div>
+      </div>
     </div>
     <div class="saveRow">
       <button class="btnPrimary" onclick="saveZone()">저장하기</button>
@@ -2518,7 +2693,7 @@ function addNewZone(){
   const id = 'zone-' + Date.now().toString(36);
   const z = {id, wing:WINGS[0].id, floor:(adminFloor||(FLOORS[0]&&FLOORS[0].id)), order:ZONES.length, mapX:50, mapY:50, pinSize:DEFAULT_PIN_SIZE, name:'새 구역', nameEn:'', category:CATEGORIES[0].id,
     persona:'', moodGoal:'', operating:{weekday:'', weekend:''}, schedule:[{s:'00:00',e:'24:00',g:''}], dbNote:'', faderNote:'', art:null,
-    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[], faderSpots:[], dbSpots:[], faderTimeSpots:[]};
+    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[], faderSpots:[], dbSpots:[], faderTimeSpots:[], hoursByDay:null};
   ZONES.push(z);
   adminSelectedId=id; adminDraft=cloneZone(z);
   renderAdminList(); renderAdminForm(); renderAdminMap();
@@ -2599,6 +2774,10 @@ function collectDraftFromForm(){
   }
   if(document.getElementById('faderTimeSpotsEditor')){
     adminDraft.faderTimeSpots = [...document.querySelectorAll('#faderTimeSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
+  }
+  if(document.getElementById('hoursByDayEditor') && hourGroupsUI){
+    collectHourGroupsFromDom_();
+    expandGroupsToHoursByDay_();
   }
 }
 
@@ -2722,12 +2901,14 @@ function renderStructureForm(){
       <button type="button" class="${structureTab==='wings'?'active':''}" onclick="setStructureTab('wings')">동(棟)</button>
       <button type="button" class="${structureTab==='floors'?'active':''}" onclick="setStructureTab('floors')">층</button>
       <button type="button" class="${structureTab==='categories'?'active':''}" onclick="setStructureTab('categories')">카테고리 · 조도</button>
+      <button type="button" class="${structureTab==='colorPresets'?'active':''}" onclick="setStructureTab('colorPresets')">색상 프리셋</button>
     </div>
     <div id="structureBody"></div>
   `;
   const body=document.getElementById('structureBody');
   if(structureTab==='wings') body.innerHTML = renderWingsTab();
   else if(structureTab==='floors') body.innerHTML = renderFloorsTab();
+  else if(structureTab==='colorPresets') body.innerHTML = renderColorPresetsTab();
   else body.innerHTML = renderCategoriesTab();
 }
 
@@ -2949,6 +3130,69 @@ async function saveCategories(){
   }
   renderFilters(); renderMatrix(); if(state.selected) renderPanel(state.selected);
   if(adminUnlocked && adminMode==='zones') renderAdminForm();
+}
+
+/* ---- 지도 핀 색상 프리셋 ---- */
+function colorPresetSwatchesHtml(inputId){
+  const list = (CONTENT.colorPresets||[]);
+  const swatches = list.map(p=>`<button type="button" class="colorSwatchBtn" title="${(p.name||p.hex).replace(/"/g,'&quot;')}" style="background:${p.hex};" onclick="pickColorPreset('${inputId}','${p.hex}')"></button>`).join('');
+  return `<div class="colorPresetRow" data-for="${inputId}">${swatches}<button type="button" class="colorSwatchBtn colorSwatchAdd" title="지금 색상을 프리셋으로 저장" onclick="promptSaveColorPreset('${inputId}')">+</button></div>`;
+}
+function pickColorPreset(inputId,hex){
+  const el=document.getElementById(inputId); if(!el) return;
+  el.value=hex; el.disabled=false;
+  const useBox=document.getElementById(inputId==='f_pinColor'?'f_useCustomColor':null);
+  if(useBox) useBox.checked=true;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  el.dispatchEvent(new Event('change',{bubbles:true}));
+}
+async function promptSaveColorPreset(inputId){
+  const el=document.getElementById(inputId); if(!el) return;
+  const name=(prompt('이 색상을 프리셋 이름으로 저장합니다. 이름을 입력하세요 (예: 우리 브랜드 골드)')||'').trim();
+  if(!name) return;
+  CONTENT.colorPresets = [...(CONTENT.colorPresets||[]), {id:'cp-'+Date.now().toString(36), name, hex:el.value}];
+  await saveColorPresets(true);
+  document.querySelectorAll(`.colorPresetRow[data-for="${inputId}"]`).forEach(row=>{ row.outerHTML = colorPresetSwatchesHtml(inputId); });
+  toast('색상 프리셋이 저장되었습니다: '+name);
+}
+async function saveColorPresets(silent){
+  const payload={items:CONTENT.colorPresets||[]};
+  if(dbHandle){
+    try{ await dbHandle.doc('content/colorPresets').set(payload); if(!silent) toast('색상 프리셋이 저장되었습니다 — 모든 화면에 실시간 반영됩니다'); }
+    catch(e){ if(!silent) toast('저장 실패 — 편집 권한을 확인하세요'); }
+  } else {
+    saveContentLocalOverride('colorPresets', payload); localMode=true; setLivePill();
+    if(!silent) toast('색상 프리셋 — 이 기기의 브라우저에만 저장됩니다(다른 사람과 공유되지 않음)');
+  }
+}
+function renderColorPresetsTab(){
+  const list=CONTENT.colorPresets||[];
+  return `
+    <p class="secdesc" style="margin-bottom:14px;max-width:none;">지도 핀 등 색상을 고르는 곳에 아래 프리셋이 함께 표시됩니다. 자주 쓰는 색을 저장해두면 매번 같은 색을 찾아 고를 필요가 없습니다. 색상 선택 칸 옆의 "+" 버튼으로도 바로 추가할 수 있습니다.</p>
+    <div id="colorPresetsEditor">${list.map((p,i)=>colorPresetRowHtml(p,i)).join('')}</div>
+    <button type="button" class="addRowBtn" onclick="addColorPresetRow()">+ 프리셋 추가</button>
+    <div class="saveRow"><button class="btnPrimary" onclick="saveColorPresetsFromForm()">색상 프리셋 저장</button><span class="saveState" id="colorPresetsSaveState"></span></div>
+  `;
+}
+function colorPresetRowHtml(p,i){
+  return `<div class="cardEditor" data-i="${i}" style="display:flex;gap:10px;align-items:center;">
+    <input type="color" class="cp-hex" value="${p.hex||'#a8752c'}" style="width:44px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;">
+    <div style="flex:1;"><input type="text" class="cp-name" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="프리셋 이름"></div>
+    <button type="button" class="rmBtn" onclick="removeColorPresetRow(${i})">×</button>
+  </div>`;
+}
+function collectColorPresetsFromForm(){
+  const cards=[...document.querySelectorAll('#colorPresetsEditor .cardEditor')];
+  CONTENT.colorPresets = cards.map((card,i)=>({ id:(list=>list[i]&&list[i].id||'cp-'+Date.now().toString(36)+i)(CONTENT.colorPresets||[]), name:card.querySelector('.cp-name').value, hex:card.querySelector('.cp-hex').value }));
+}
+function addColorPresetRow(){ collectColorPresetsFromForm(); CONTENT.colorPresets.push({id:'cp-'+Date.now().toString(36), name:'새 색상', hex:'#a8752c'}); renderStructureForm(); }
+function removeColorPresetRow(i){ collectColorPresetsFromForm(); CONTENT.colorPresets.splice(i,1); renderStructureForm(); }
+async function saveColorPresetsFromForm(){
+  collectColorPresetsFromForm();
+  const stateEl=document.getElementById('colorPresetsSaveState');
+  await saveColorPresets(true);
+  if(stateEl){ stateEl.textContent='✓ 저장 완료'; stateEl.style.color='var(--good)'; }
+  toast('색상 프리셋이 저장되었습니다 — 모든 화면에 실시간 반영됩니다');
 }
 
 /* ---------- 화면 문구(UI Text) admin ---------- */
