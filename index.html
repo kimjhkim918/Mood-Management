@@ -1500,13 +1500,21 @@ let zoneManageOpen = false;
 function toggleZoneManage(){ if(!adminUnlocked) return; zoneManageOpen=!zoneManageOpen; renderZoneList(); }
 function toggleZoneHidden(id,visible){
   if(!adminUnlocked) return;
+  const panel=document.querySelector('.zoneManagePanel'); const scrollTop=panel?panel.scrollTop:0;
+  const pageY=window.scrollY;
   if(visible) hiddenZoneIds.delete(id); else hiddenZoneIds.add(id);
   saveHiddenZoneIds(); renderZoneList();
+  const panel2=document.querySelector('.zoneManagePanel'); if(panel2) panel2.scrollTop=scrollTop;
+  window.scrollTo(window.scrollX, pageY);
 }
 function setZonesHidden(ids,hidden){
   if(!adminUnlocked) return;
+  const panel=document.querySelector('.zoneManagePanel'); const scrollTop=panel?panel.scrollTop:0;
+  const pageY=window.scrollY;
   ids.forEach(id=> hidden ? hiddenZoneIds.add(id) : hiddenZoneIds.delete(id));
   saveHiddenZoneIds(); renderZoneList();
+  const panel2=document.querySelector('.zoneManagePanel'); if(panel2) panel2.scrollTop=scrollTop;
+  window.scrollTo(window.scrollX, pageY);
 }
 function groupZonesByWing(list){
   const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
