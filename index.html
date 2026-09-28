@@ -145,7 +145,10 @@ nav.pages button.active{background:var(--accent);color:#fff;}
 #adminMapWrap svg{touch-action:none;}
 .mapCaption{font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;}
 .zoneListWrap{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.zoneListHead{font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:10px;}
+.zoneListHead{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:10px;}
+.zoneListHeadTxt{flex:1;}
+.zoneListManageBtn{flex:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;}
+.zoneListManageBtn:hover{border-color:var(--border-strong);}
 .zoneListGroup{margin-bottom:10px;}
 .zoneListGroup:last-child{margin-bottom:0;}
 .zoneListGroupTitle{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
@@ -159,6 +162,13 @@ nav.pages button.active{background:var(--accent);color:#fff;}
   .zoneListChipsView{display:none;}
 }
 .zoneListEmpty{font-size:12px;color:var(--text-muted);padding:4px 0;}
+.zoneManagePanel{margin-bottom:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);max-height:260px;overflow-y:auto;}
+.zoneManageActions{display:flex;gap:8px;margin-bottom:10px;}
+.zoneManageGroup{margin-bottom:10px;}
+.zoneManageGroup:last-child{margin-bottom:0;}
+.zoneManageItems{display:flex;flex-wrap:wrap;gap:4px 14px;}
+.zoneManageItem{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer;}
+.zoneManageItem input{cursor:pointer;}
 .mapPin{transition:opacity .15s;}
 .mapPin.dim{opacity:.25;}
 .pinDot{fill:var(--accent);stroke:#fff;stroke-width:1.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
@@ -1482,33 +1492,62 @@ function renderMap(){
   buildMapSVG(document.getElementById('siteMap'), false, state.floor);
   renderZoneList();
 }
+const HIDDEN_ZONES_KEY='pmc_hidden_zones_v1';
+function loadHiddenZoneIds(){ try{ return new Set(JSON.parse(localStorage.getItem(HIDDEN_ZONES_KEY)||'[]')); }catch(e){ return new Set(); } }
+function saveHiddenZoneIds(){ try{ localStorage.setItem(HIDDEN_ZONES_KEY, JSON.stringify([...hiddenZoneIds])); }catch(e){} }
+let hiddenZoneIds = loadHiddenZoneIds();
+let zoneManageOpen = false;
+function toggleZoneManage(){ if(!adminUnlocked) return; zoneManageOpen=!zoneManageOpen; renderZoneList(); }
+function toggleZoneHidden(id,visible){
+  if(!adminUnlocked) return;
+  if(visible) hiddenZoneIds.delete(id); else hiddenZoneIds.add(id);
+  saveHiddenZoneIds(); renderZoneList();
+}
+function setZonesHidden(ids,hidden){
+  if(!adminUnlocked) return;
+  ids.forEach(id=> hidden ? hiddenZoneIds.add(id) : hiddenZoneIds.delete(id));
+  saveHiddenZoneIds(); renderZoneList();
+}
+function groupZonesByWing(list){
+  const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
+  const byWing={}; list.forEach(z=>{ (byWing[z.wing]=byWing[z.wing]||[]).push(z); });
+  return Object.keys(byWing).sort((a,b)=>(wingOrder[a]!=null?wingOrder[a]:999)-(wingOrder[b]!=null?wingOrder[b]:999))
+    .map(wid=>({ w:WINGS.find(x=>x.id===wid), zs:byWing[wid] }));
+}
 function renderZoneList(){
   const wrap=document.getElementById('zoneListWrap'); if(!wrap) return;
-  const floorZones = ZONES.filter(z=>(zoneFloor(z)===state.floor || (z.extraFloors||[]).some(e=>e.floorId===state.floor)) && matchesFilters(z));
+  // 카테고리(및 검색) 필터가 걸려 있으면 층 구분 없이 해당 조건에 맞는 모든 구역을 목록에 보여준다.
+  // 지도 위 핀은 buildMapSVG/pinPositionFor가 별도로 현재 층(및 extraFloors) 기준으로만 그리므로 그대로 둔다.
+  const matchedZones = ZONES.filter(matchesFilters);
   const headingTxt = state.filter ? categoryLabel(state.filter) : '전체 구역';
-  if(!floorZones.length){
-    wrap.innerHTML = `<div class="zoneListHead">${headingTxt} · 0개 구역</div><p class="zoneListEmpty">이 층·조건에 맞는 구역이 없습니다.</p>`;
+  if(!matchedZones.length){
+    wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · 0개 구역</span></div><p class="zoneListEmpty">조건에 맞는 구역이 없습니다.</p>`;
     return;
   }
-  const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
-  const byWing={};
-  floorZones.forEach(z=>{ (byWing[z.wing]=byWing[z.wing]||[]).push(z); });
-  const wingIds = Object.keys(byWing).sort((a,b)=>(wingOrder[a]!=null?wingOrder[a]:999)-(wingOrder[b]!=null?wingOrder[b]:999));
-  const groupsHtml = wingIds.map(wid=>{
-    const w=WINGS.find(x=>x.id===wid);
-    const zs=byWing[wid];
-    return `<div class="zoneListGroup">
+  const visibleZones = matchedZones.filter(z=>!hiddenZoneIds.has(z.id));
+  const hiddenCount = matchedZones.length - visibleZones.length;
+  const groups = groupZonesByWing(visibleZones);
+  const groupsHtml = groups.length ? groups.map(({w,zs})=>`<div class="zoneListGroup">
       <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
       <div class="zoneListChips">${zs.map(z=>`<button type="button" class="zoneChip${(state.selected&&state.selected.id===z.id)?' active':''}" onclick="selectZone('${z.id}')">${z.name}</button>`).join('')}</div>
-    </div>`;
-  }).join('');
+    </div>`).join('') : `<p class="zoneListEmpty">표시로 선택된 구역이 없습니다 — '구역 편집'에서 다시 켜세요.</p>`;
   const selectedId = state.selected ? state.selected.id : '';
-  const optionsHtml = wingIds.map(wid=>{
-    const w=WINGS.find(x=>x.id===wid);
-    const zs=byWing[wid];
-    return `<optgroup label="${w?w.title.split(' · ')[0]:'-'}">${zs.map(z=>`<option value="${z.id}" ${z.id===selectedId?'selected':''}>${z.name}</option>`).join('')}</optgroup>`;
-  }).join('');
-  wrap.innerHTML = `<div class="zoneListHead">${headingTxt} · ${floorZones.length}개 구역 — 눌러서 선택</div>
+  const optionsHtml = groups.map(({w,zs})=>`<optgroup label="${w?w.title.split(' · ')[0]:'-'}">${zs.map(z=>`<option value="${z.id}" ${z.id===selectedId?'selected':''}>${z.name}</option>`).join('')}</optgroup>`).join('');
+  const manageGroups = groupZonesByWing(matchedZones);
+  const allIds = matchedZones.map(z=>z.id);
+  const manageHtml = (adminUnlocked && zoneManageOpen) ? `<div class="zoneManagePanel">
+      <div class="zoneManageActions">
+        <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},false)'>전체 표시</button>
+        <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},true)'>전체 숨김</button>
+      </div>
+      ${manageGroups.map(({w,zs})=>`<div class="zoneManageGroup">
+        <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
+        <div class="zoneManageItems">${zs.map(z=>`<label class="zoneManageItem"><input type="checkbox" ${hiddenZoneIds.has(z.id)?'':'checked'} onchange="toggleZoneHidden('${z.id}',this.checked)"><span>${z.name}</span></label>`).join('')}</div>
+      </div>`).join('')}
+    </div>` : '';
+  const manageBtnHtml = adminUnlocked ? `<button type="button" class="zoneListManageBtn" onclick="toggleZoneManage()">${zoneManageOpen?'닫기':'구역 편집'}</button>` : '';
+  wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · ${visibleZones.length}개 구역 표시 중${hiddenCount?` (숨김 ${hiddenCount}개)`:''} — 눌러서 선택</span>${manageBtnHtml}</div>
+    ${manageHtml}
     <select class="zoneListSelect" id="zoneListSelect" onchange="selectZone(this.value)">
       <option value="" disabled ${selectedId?'':'selected'}>구역을 선택하세요</option>
       ${optionsHtml}
@@ -1663,6 +1702,7 @@ function dayKeyForDate(d){ return ['sun','mon','tue','wed','thu','fri','sat'][d.
 let panelDay=null;
 function selectZone(id,resetPreview=true){
   state.selected = ZONES.find(z=>z.id===id);
+  if(state.selected) state.floor = zoneFloor(state.selected);
   if(resetPreview){state.previewMin=null; state.followNow=true;}
   panelDay=dayKeyForDate(new Date());
   renderMap(); renderPanel(state.selected);
@@ -3460,6 +3500,7 @@ function enterAdmin(){
 function exitAdmin(){
   document.getElementById('adminRoot').hidden = true;
   document.getElementById('viewerRoot').hidden = false;
+  renderZoneList();
 }
 function checkPin(){
   const v=document.getElementById('pinInput').value;
