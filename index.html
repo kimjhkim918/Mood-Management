@@ -145,10 +145,7 @@ nav.pages button.active{background:var(--accent);color:#fff;}
 #adminMapWrap svg{touch-action:none;}
 .mapCaption{font-size:11.5px;color:var(--text-muted);margin:10px 2px 0;}
 .zoneListWrap{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.zoneListHead{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:10px;}
-.zoneListHeadTxt{flex:1;}
-.zoneListManageBtn{flex:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;}
-.zoneListManageBtn:hover{border-color:var(--border-strong);}
+.zoneListHead{font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:10px;}
 .zoneListGroup{margin-bottom:10px;}
 .zoneListGroup:last-child{margin-bottom:0;}
 .zoneListGroupTitle{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
@@ -162,13 +159,6 @@ nav.pages button.active{background:var(--accent);color:#fff;}
   .zoneListChipsView{display:none;}
 }
 .zoneListEmpty{font-size:12px;color:var(--text-muted);padding:4px 0;}
-.zoneManagePanel{margin-bottom:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);max-height:260px;overflow-y:auto;}
-.zoneManageActions{display:flex;gap:8px;margin-bottom:10px;}
-.zoneManageGroup{margin-bottom:10px;}
-.zoneManageGroup:last-child{margin-bottom:0;}
-.zoneManageItems{display:flex;flex-wrap:wrap;gap:4px 14px;}
-.zoneManageItem{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer;}
-.zoneManageItem input{cursor:pointer;}
 .mapPin{transition:opacity .15s;}
 .mapPin.dim{opacity:.25;}
 .pinDot{fill:var(--accent);stroke:#fff;stroke-width:1.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
@@ -366,6 +356,14 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .rmBtn{border:none;background:var(--bad-soft);color:var(--bad);width:30px;height:30px;border-radius:7px;cursor:pointer;font-weight:700;}
 .opRangeRow{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .opRangeRow input{width:84px;padding:7px 9px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.6px;}
+.faderSpotRow,.dbSpotRow,.announceRow,.hoursDayRow{border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--surface-2);}
+.faderChipRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+.faderChip{flex:0 0 auto;min-width:92px;max-width:160px;border:1px solid var(--border-strong);border-radius:9px;padding:8px 10px;background:var(--surface-2);}
+.faderChipName{font-size:11.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.faderChipValue{font-size:13px;font-weight:700;color:var(--accent-strong);margin-top:2px;}
+.faderChipMemo{font-size:10.5px;color:var(--text-muted);margin-top:3px;line-height:1.35;}
+.dayCheckRow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px;}
+.dayCheckRow label{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border:1px solid var(--border-strong);border-radius:99px;padding:5px 10px;cursor:pointer;}
 .addRowBtn{font-size:12px;font-weight:700;color:var(--accent-strong);background:none;border:1px dashed var(--border-strong);border-radius:8px;padding:7px 12px;cursor:pointer;margin-top:4px;margin-right:6px;}
 .saveRow{display:flex;gap:10px;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border);flex-wrap:wrap;}
 .toolRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
@@ -378,6 +376,9 @@ footer p{margin:0;font-size:12px;color:var(--text-muted);}
 .dbWarn{background:var(--warn-soft);color:var(--accent-strong);border:1px solid var(--border-strong);border-radius:10px;padding:10px 14px;font-size:12.4px;margin:14px 24px;}
 .cardEditor{border:1px solid var(--border);border-radius:11px;padding:14px;margin-bottom:12px;background:var(--surface-2);}
 .cardEditor .rmRow{display:flex;justify-content:flex-end;margin-top:4px;}
+.colorPresetRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;}
+.colorSwatchBtn{width:20px;height:20px;border-radius:50%;border:1px solid var(--border-strong);cursor:pointer;padding:0;}
+.colorSwatchAdd{background:var(--surface-2);color:var(--text-muted);font-size:13px;font-weight:700;line-height:18px;}
 h3.formH{font-size:15px;margin:26px 0 14px;padding-top:20px;border-top:1px solid var(--border);}
 h3.formH:first-child{margin-top:0;padding-top:0;border-top:none;}
 </style>
@@ -1008,9 +1009,20 @@ const SEED_UITEXT = {
   modeUiTextLabel:"화면 문구"
 };
 
+const SEED_COLORPRESETS = [
+  {id:"cp-amber", name:"앰버(재즈)", hex:"#d8a15c"},
+  {id:"cp-sky", name:"스카이블루(하우스)", hex:"#7fb6d9"},
+  {id:"cp-rose", name:"로즈(팝)", hex:"#e78ca0"},
+  {id:"cp-sage", name:"세이지그린(뉴에이지)", hex:"#8fc79b"},
+  {id:"cp-tangerine", name:"탠저린(키즈)", hex:"#e8b165"},
+  {id:"cp-violet", name:"바이올렛(오케스트라)", hex:"#b3a0dd"},
+  {id:"cp-gold", name:"골드(강조/포인트)", hex:"#e0ac54"},
+  {id:"cp-slate", name:"슬레이트(무음/뮤트)", hex:"#544a37"}
+];
 const SEED_CONTENT = {
   genreGuide: SEED_GENREGUIDE,
-  uiText: SEED_UITEXT
+  uiText: SEED_UITEXT,
+  colorPresets: SEED_COLORPRESETS
 };
 
 const SEED_CHANNELS = [
@@ -1113,6 +1125,7 @@ function applyLocalOverrides(){
   if(co.wings && co.wings.items && co.wings.items.length){ WINGS=co.wings.items; localMode=true; }
   if(co.categories && co.categories.items && co.categories.items.length){ CATEGORIES=co.categories.items; localMode=true; }
   if(co.floors && co.floors.items && co.floors.items.length){ FLOORS=co.floors.items; localMode=true; }
+  if(co.colorPresets && co.colorPresets.items && co.colorPresets.items.length){ CONTENT.colorPresets=co.colorPresets.items; localMode=true; }
   const cho = loadChannelLocalOverrides();
   if(cho && Object.keys(cho).length){ CHANNELS = mergeChannels(cho); localMode = true; }
   try{ const savedMap = localStorage.getItem("pmc_map_image_v1"); if(savedMap){ customMapDataUrl=savedMap; localMode=true; } }catch(e){}
@@ -1173,6 +1186,7 @@ async function initDb(){
     db.doc('content/wings').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ WINGS=snap.data().items; onStructureChanged(); } }, err=>console.warn('wings snapshot error',err));
     db.doc('content/categories').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ CATEGORIES=snap.data().items; onStructureChanged(); } }, err=>console.warn('categories snapshot error',err));
     db.doc('content/floors').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ FLOORS=snap.data().items; onStructureChanged(); } }, err=>console.warn('floors snapshot error',err));
+    db.doc('content/colorPresets').onSnapshot(snap=>{ if(snap.exists && snap.data().items && snap.data().items.length){ CONTENT.colorPresets=snap.data().items; onStructureChanged(); } }, err=>console.warn('colorPresets snapshot error',err));
     db.collection('channels').onSnapshot(snap=>{
       const map={}; snap.docs.forEach(d=>{ if(d.exists) map[d.id]={...d.data(), id:d.id}; });
       CHANNELS = mergeChannels(map);
@@ -1386,26 +1400,34 @@ function handleAdminMapImageUpload(fileInput){ handleFloorImageUpload(fileInput,
 function handleAdminMapImageReset(){ resetFloorImage(adminFloor); }
 const DEFAULT_PIN_SIZE=9;
 
+function pinPositionFor(z, floorId){
+  const own = zoneFloor(z);
+  if(!floorId || own===floorId) return {ref:z, mapX:z.mapX, mapY:z.mapY, pinSize:z.pinSize, pinColor:z.pinColor, isExtra:false};
+  const ex=(z.extraFloors||[]).find(e=>e.floorId===floorId);
+  if(!ex) return null;
+  return {ref:ex, mapX:ex.mapX!=null?ex.mapX:50, mapY:ex.mapY!=null?ex.mapY:50, pinSize:ex.pinSize!=null?ex.pinSize:z.pinSize, pinColor: ex.pinColor!==undefined?ex.pinColor:z.pinColor, isExtra:true};
+}
 function buildMapSVG(svg, editable, floorId){
   if(!svg) return;
   svg.innerHTML=''; const NS='http://www.w3.org/2000/svg';
-  const list = floorId ? ZONES.filter(z=>zoneFloor(z)===floorId) : ZONES;
+  const entries=[];
+  ZONES.forEach(z=>{ const pos = floorId ? pinPositionFor(z,floorId) : {ref:z, mapX:z.mapX, mapY:z.mapY, pinSize:z.pinSize, pinColor:z.pinColor, isExtra:false}; if(pos) entries.push({z,pos}); });
 
-  list.forEach(z=>{
-    const x=(z.mapX!=null?z.mapX:50)/100*MAP_W;
-    const y=(z.mapY!=null?z.mapY:50)/100*MAP_H;
-    const size = z.pinSize!=null ? z.pinSize : DEFAULT_PIN_SIZE;
+  entries.forEach(({z,pos})=>{
+    const x=(pos.mapX!=null?pos.mapX:50)/100*MAP_W;
+    const y=(pos.mapY!=null?pos.mapY:50)/100*MAP_H;
+    const size = pos.pinSize!=null ? pos.pinSize : DEFAULT_PIN_SIZE;
     const dimmed = !editable && !matchesFilters(z);
     const selected = editable ? (adminSelectedId===z.id) : !!(state.selected && state.selected.id===z.id);
     const g=document.createElementNS(NS,'g');
-    g.setAttribute('class','mapPin'+(editable?' editable':'')+(dimmed?' dim':''));
+    g.setAttribute('class','mapPin'+(editable?' editable':'')+(dimmed?' dim':'')+(pos.isExtra?' extraFloorPin':''));
     g.dataset.zoneId=z.id;
     let inner = '';
     const zSched=activeScheduleOf(z);
     const isOn = !!(zSched && zSched.length);
-    const pinFill = isOn ? (z.pinColor || 'var(--accent)') : 'var(--mute-c)';
+    const pinFill = isOn ? (pos.pinColor || 'var(--accent)') : 'var(--mute-c)';
     if(selected) inner += `<circle cx="${x}" cy="${y}" r="${size+6}" class="pinRing" style="stroke:${isOn?pinFill:'var(--accent)'}"/>`;
-    inner += `<circle cx="${x}" cy="${y}" r="${size}" class="pinDot" style="fill:${pinFill}" data-role="drag"></circle>`;
+    inner += `<circle cx="${x}" cy="${y}" r="${size}" class="pinDot" style="fill:${pinFill};${pos.isExtra?'stroke:var(--accent-strong);stroke-width:1.5;stroke-dasharray:2,2;':''}" data-role="drag"></circle>`;
     if(editable && selected){
       const off=(size+9)*Math.SQRT1_2;
       inner += `<circle cx="${x+off}" cy="${y+off}" r="6.5" class="pinHandle" data-role="resize"></circle>`;
@@ -1420,9 +1442,9 @@ function buildMapSVG(svg, editable, floorId){
 
     const dragHandle=g.querySelector('[data-role="drag"]');
     if(editable){
-      dragHandle.addEventListener('pointerdown',e=>startPinDrag(e,z,svg,g,'move'));
+      dragHandle.addEventListener('pointerdown',e=>startPinDrag(e,z,svg,g,'move',pos));
       const resizeHandle=g.querySelector('[data-role="resize"]');
-      if(resizeHandle){ resizeHandle.addEventListener('pointerdown',e=>{ e.stopPropagation(); startPinDrag(e,z,svg,g,'resize'); }); }
+      if(resizeHandle){ resizeHandle.addEventListener('pointerdown',e=>{ e.stopPropagation(); startPinDrag(e,z,svg,g,'resize',pos); }); }
       g.addEventListener('click',()=>{ if(pinDragMoved) return; adminSelectedId=z.id; adminDraft=cloneZone(z); renderAdminList(); renderAdminForm(); renderAdminMap(); });
     } else {
       dragHandle.addEventListener('click',()=>selectZone(z.id));
@@ -1460,59 +1482,33 @@ function renderMap(){
   buildMapSVG(document.getElementById('siteMap'), false, state.floor);
   renderZoneList();
 }
-const HIDDEN_ZONES_KEY='pmc_hidden_zones_v1';
-function loadHiddenZoneIds(){ try{ return new Set(JSON.parse(localStorage.getItem(HIDDEN_ZONES_KEY)||'[]')); }catch(e){ return new Set(); } }
-function saveHiddenZoneIds(){ try{ localStorage.setItem(HIDDEN_ZONES_KEY, JSON.stringify([...hiddenZoneIds])); }catch(e){} }
-let hiddenZoneIds = loadHiddenZoneIds();
-let zoneManageOpen = false;
-function toggleZoneManage(){ zoneManageOpen=!zoneManageOpen; renderZoneList(); }
-function toggleZoneHidden(id,visible){
-  if(visible) hiddenZoneIds.delete(id); else hiddenZoneIds.add(id);
-  saveHiddenZoneIds(); renderZoneList();
-}
-function setZonesHidden(ids,hidden){
-  ids.forEach(id=> hidden ? hiddenZoneIds.add(id) : hiddenZoneIds.delete(id));
-  saveHiddenZoneIds(); renderZoneList();
-}
-function groupZonesByWing(list){
-  const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
-  const byWing={}; list.forEach(z=>{ (byWing[z.wing]=byWing[z.wing]||[]).push(z); });
-  return Object.keys(byWing).sort((a,b)=>(wingOrder[a]!=null?wingOrder[a]:999)-(wingOrder[b]!=null?wingOrder[b]:999))
-    .map(wid=>({ w:WINGS.find(x=>x.id===wid), zs:byWing[wid] }));
-}
 function renderZoneList(){
   const wrap=document.getElementById('zoneListWrap'); if(!wrap) return;
-  // 카테고리(및 검색) 필터가 걸려 있으면 층 구분 없이 해당 조건에 맞는 모든 구역을 보여준다.
-  // 지도 위 핀은 buildMapSVG가 별도로 현재 층 기준으로만 그리므로, 여기서는 목록만 층과 무관하게 넓힌다.
-  const matchedZones = ZONES.filter(matchesFilters);
+  const floorZones = ZONES.filter(z=>(zoneFloor(z)===state.floor || (z.extraFloors||[]).some(e=>e.floorId===state.floor)) && matchesFilters(z));
   const headingTxt = state.filter ? categoryLabel(state.filter) : '전체 구역';
-  if(!matchedZones.length){
-    wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · 0개 구역</span></div><p class="zoneListEmpty">조건에 맞는 구역이 없습니다.</p>`;
+  if(!floorZones.length){
+    wrap.innerHTML = `<div class="zoneListHead">${headingTxt} · 0개 구역</div><p class="zoneListEmpty">이 층·조건에 맞는 구역이 없습니다.</p>`;
     return;
   }
-  const visibleZones = matchedZones.filter(z=>!hiddenZoneIds.has(z.id));
-  const hiddenCount = matchedZones.length - visibleZones.length;
-  const groups = groupZonesByWing(visibleZones);
-  const groupsHtml = groups.length ? groups.map(({w,zs})=>`<div class="zoneListGroup">
+  const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
+  const byWing={};
+  floorZones.forEach(z=>{ (byWing[z.wing]=byWing[z.wing]||[]).push(z); });
+  const wingIds = Object.keys(byWing).sort((a,b)=>(wingOrder[a]!=null?wingOrder[a]:999)-(wingOrder[b]!=null?wingOrder[b]:999));
+  const groupsHtml = wingIds.map(wid=>{
+    const w=WINGS.find(x=>x.id===wid);
+    const zs=byWing[wid];
+    return `<div class="zoneListGroup">
       <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
       <div class="zoneListChips">${zs.map(z=>`<button type="button" class="zoneChip${(state.selected&&state.selected.id===z.id)?' active':''}" onclick="selectZone('${z.id}')">${z.name}</button>`).join('')}</div>
-    </div>`).join('') : `<p class="zoneListEmpty">표시로 선택된 구역이 없습니다 — '구역 편집'에서 다시 켜세요.</p>`;
+    </div>`;
+  }).join('');
   const selectedId = state.selected ? state.selected.id : '';
-  const optionsHtml = groups.map(({w,zs})=>`<optgroup label="${w?w.title.split(' · ')[0]:'-'}">${zs.map(z=>`<option value="${z.id}" ${z.id===selectedId?'selected':''}>${z.name}</option>`).join('')}</optgroup>`).join('');
-  const manageGroups = groupZonesByWing(matchedZones);
-  const allIds = matchedZones.map(z=>z.id);
-  const manageHtml = zoneManageOpen ? `<div class="zoneManagePanel">
-      <div class="zoneManageActions">
-        <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},false)'>전체 표시</button>
-        <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},true)'>전체 숨김</button>
-      </div>
-      ${manageGroups.map(({w,zs})=>`<div class="zoneManageGroup">
-        <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
-        <div class="zoneManageItems">${zs.map(z=>`<label class="zoneManageItem"><input type="checkbox" ${hiddenZoneIds.has(z.id)?'':'checked'} onchange="toggleZoneHidden('${z.id}',this.checked)"><span>${z.name}</span></label>`).join('')}</div>
-      </div>`).join('')}
-    </div>` : '';
-  wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · ${visibleZones.length}개 구역 표시 중${hiddenCount?` (숨김 ${hiddenCount}개)`:''} — 눌러서 선택</span><button type="button" class="zoneListManageBtn" onclick="toggleZoneManage()">${zoneManageOpen?'닫기':'구역 편집'}</button></div>
-    ${manageHtml}
+  const optionsHtml = wingIds.map(wid=>{
+    const w=WINGS.find(x=>x.id===wid);
+    const zs=byWing[wid];
+    return `<optgroup label="${w?w.title.split(' · ')[0]:'-'}">${zs.map(z=>`<option value="${z.id}" ${z.id===selectedId?'selected':''}>${z.name}</option>`).join('')}</optgroup>`;
+  }).join('');
+  wrap.innerHTML = `<div class="zoneListHead">${headingTxt} · ${floorZones.length}개 구역 — 눌러서 선택</div>
     <select class="zoneListSelect" id="zoneListSelect" onchange="selectZone(this.value)">
       <option value="" disabled ${selectedId?'':'selected'}>구역을 선택하세요</option>
       ${optionsHtml}
@@ -1543,10 +1539,10 @@ function svgPointFromEvent(svg, evt){
   const loc=pt.matrixTransform(ctm.inverse());
   return {x:loc.x, y:loc.y};
 }
-function startPinDrag(e,zone,svg,g,mode){
+function startPinDrag(e,zone,svg,g,mode,pos){
   e.preventDefault(); e.stopPropagation();
   pinDragMoved=false;
-  pinDragState={zone,svg,mode};
+  pinDragState={zone,svg,mode,pos};
   try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
   g.classList.add('dragging');
   window.addEventListener('pointermove',onPinDragMove);
@@ -1555,26 +1551,31 @@ function startPinDrag(e,zone,svg,g,mode){
 function onPinDragMove(e){
   if(!pinDragState) return;
   pinDragMoved=true;
-  const {zone,svg,mode}=pinDragState;
+  const {zone,svg,mode,pos}=pinDragState;
+  const ref = pos ? pos.ref : zone;
   const p=svgPointFromEvent(svg,e);
   if(mode==='move'){
-    zone.mapX = Math.round(Math.max(0,Math.min(100,p.x/MAP_W*100))*10)/10;
-    zone.mapY = Math.round(Math.max(0,Math.min(100,p.y/MAP_H*100))*10)/10;
+    ref.mapX = Math.round(Math.max(0,Math.min(100,p.x/MAP_W*100))*10)/10;
+    ref.mapY = Math.round(Math.max(0,Math.min(100,p.y/MAP_H*100))*10)/10;
   } else {
-    const cx=(zone.mapX/100)*MAP_W, cy=(zone.mapY/100)*MAP_H;
+    const curX = ref.mapX!=null?ref.mapX:50, curY = ref.mapY!=null?ref.mapY:50;
+    const cx=(curX/100)*MAP_W, cy=(curY/100)*MAP_H;
     const dist=Math.hypot(p.x-cx,p.y-cy)/Math.SQRT1_2;
-    zone.pinSize = Math.round(Math.max(4,Math.min(24,dist)));
+    ref.pinSize = Math.round(Math.max(4,Math.min(24,dist)));
   }
-  if(adminDraft && adminDraft.id===zone.id){ adminDraft.mapX=zone.mapX; adminDraft.mapY=zone.mapY; adminDraft.pinSize=zone.pinSize; syncPositionFieldsUI(); }
+  if(!pos || !pos.isExtra){
+    if(adminDraft && adminDraft.id===zone.id){ adminDraft.mapX=ref.mapX; adminDraft.mapY=ref.mapY; adminDraft.pinSize=ref.pinSize; syncPositionFieldsUI(); }
+  }
   renderAdminMap();
 }
 function onPinDragEnd(){
   if(!pinDragState) return;
-  const {zone}=pinDragState;
+  const {zone,pos}=pinDragState;
   window.removeEventListener('pointermove',onPinDragMove);
   window.removeEventListener('pointerup',onPinDragEnd);
   pinDragState=null;
-  persistZonePatch(zone.id, {mapX:zone.mapX, mapY:zone.mapY, pinSize:zone.pinSize});
+  if(pos && pos.isExtra){ persistZonePatch(zone.id, {extraFloors:(zone.extraFloors||[]).map(v=>({...v}))}); }
+  else { persistZonePatch(zone.id, {mapX:zone.mapX, mapY:zone.mapY, pinSize:zone.pinSize}); }
   setTimeout(()=>{ pinDragMoved=false; },0);
 }
 function syncPositionFieldsUI(){
@@ -1656,12 +1657,14 @@ document.getElementById('searchInput').addEventListener('input',e=>{
   }
   renderMap();
 });
-let panelDay='weekday';
+const DAY_KEYS=['mon','tue','wed','thu','fri','sat','sun'];
+const DAY_LABELS={mon:'월',tue:'화',wed:'수',thu:'목',fri:'금',sat:'토',sun:'일'};
+function dayKeyForDate(d){ return ['sun','mon','tue','wed','thu','fri','sat'][d.getDay()]; }
+let panelDay=null;
 function selectZone(id,resetPreview=true){
   state.selected = ZONES.find(z=>z.id===id);
-  if(state.selected) state.floor = zoneFloor(state.selected);
   if(resetPreview){state.previewMin=null; state.followNow=true;}
-  panelDay='weekday';
+  panelDay=dayKeyForDate(new Date());
   renderMap(); renderPanel(state.selected);
 }
 function fmtMin(m){ m=((m%1440)+1440)%1440; return pad(Math.floor(m/60))+':'+pad(m%60); }
@@ -1691,15 +1694,33 @@ function closedSegsFromRanges(ranges){
   if(cursor<1440) closed.push([cursor,1440]);
   return closed;
 }
+function hourRangesForDay(z,dayKey){
+  if(z.hoursByDay && z.hoursByDay[dayKey] && z.hoursByDay[dayKey].length) return z.hoursByDay[dayKey];
+  const legacyKey=(dayKey==='sat'||dayKey==='sun')?'weekend':'weekday';
+  return operatingRangesFor(z,legacyKey).map(r=>({...r,type:'open'}));
+}
+function closedSegsWithLabels(z,dayKey){
+  const ranges=hourRangesForDay(z,dayKey);
+  const openRanges=ranges.filter(r=>r.type!=='break');
+  const breakRanges=ranges.filter(r=>r.type==='break');
+  const closed=closedSegsFromRanges(openRanges);
+  return closed.map(([s,e])=>{
+    const br=breakRanges.find(r=>{ let bs=toMin(r.s), be=toMin(r.e); if(be<=bs) be=1440; return bs<=s && be>=e; });
+    return {s,e,label: br?(br.label||'브레이크타임'):null};
+  });
+}
 function renderPanel(z){
   const panel=document.getElementById('panel'); if(!panel) return;
   if(!z){ const emptyTxt=((CONTENT.uiText&&CONTENT.uiText.panelEmptyText)||SEED_UITEXT.panelEmptyText).replace(/\n/g,'<br>'); panel.innerHTML='<div class="panel-empty">'+emptyTxt+'</div>'; return; }
+  if(!panelDay) panelDay=dayKeyForDate(new Date());
   const cat = findCategory(z.category);
   const minute=activeMin(); const isNowView=state.previewMin==null;
   const curSlot = luxSlotForMinute(cat,minute);
   const usingEvent = !!z.eventActive;
   const sched = activeScheduleOf(z);
   const eventBannerHtml = usingEvent ? `<div class="eventBanner">🎉 이벤트 모드 진행 중${z.eventNote?' — '+z.eventNote:''}</div>` : '';
+  const dbNow = zoneCurrentDb(z,cat,minute) || (z.dbNote||'').split(' — ')[0];
+  const faderDisplay = zoneCurrentFader(z,cat,minute) || (z.faderNote||'-');
   let nowHtml, timelineHtml, tableHtml;
   if(sched && sched.length){
     const cur=blockAt(sched,minute); const tags=tagFor(cur.g);
@@ -1709,15 +1730,15 @@ function renderPanel(z){
         <div class="chips">${tags.map(t=>`<span class="chip">${t.label} · ${t.mood}</span>`).join('')}</div>
         <div class="metrics">
           <div class="metric"><div class="k">참고 BPM</div><div class="v">${tags[0].bpm}</div></div>
-          <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${(z.dbNote||'').split(' — ')[0]}</div></div>
+          <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${dbNow||'-'}</div></div>
           <div class="metric"><div class="k">조도(현재대)</div><div class="v" style="font-size:11px;">${zoneCurrentLux(z,cat,minute)}</div></div>
-          <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${z.faderNote||'-'}</div></div>
+          <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
         </div></div>`;
     const segs=sched.map(b=>{ let s=toMin(b.s),e=toMin(b.e); let dur=e>s?e-s:(1440-s+e); return `<div class="seg genreHover" data-genre="${(b.g||'').replace(/"/g,'&quot;')}" data-time="${b.s}-${b.e}" style="width:${dur/1440*100}%;background:${b.color||colorFor(b.g)}"></div>`; }).join('');
-    const opRanges = operatingRangesFor(z,panelDay);
-    const closedSegs = closedSegsFromRanges(opRanges);
-    const opOverlayHtml = closedSegs.map(([s,e])=>`<div class="opClosed" style="left:${s/1440*100}%;width:${(e-s)/1440*100}%" title="매장 운영 전/후 — BGM만 송출 중"></div>`).join('');
-    const opLegendHtml = closedSegs.length ? `<div class="opLegend"><span class="sw sw-open"></span>매장 운영 중 <span class="sw sw-closed"></span>매장 운영 전·후 (BGM만 송출)${opRanges.length?` · 운영: ${opRanges.map(r=>r.s+'–'+r.e).join(', ')}`:''}</div>` : '';
+    const opRanges = hourRangesForDay(z,panelDay).filter(r=>r.type!=='break');
+    const closedSegs = closedSegsWithLabels(z,panelDay);
+    const opOverlayHtml = closedSegs.map(seg=>`<div class="opClosed" style="left:${seg.s/1440*100}%;width:${(seg.e-seg.s)/1440*100}%" title="${seg.label?seg.label:'매장 운영 전/후 — BGM만 송출 중'}"></div>`).join('');
+    const opLegendHtml = closedSegs.length ? `<div class="opLegend"><span class="sw sw-open"></span>매장 운영 중 <span class="sw sw-closed"></span>매장 운영 전·후 (BGM만 송출)${opRanges.length?` · 운영: ${opRanges.map(r=>r.s+'–'+r.e).join(', ')}`:''}${closedSegs.some(s=>s.label)?` · ${[...new Set(closedSegs.filter(s=>s.label).map(s=>s.label))].join(', ')}: ${closedSegs.filter(s=>s.label).map(s=>fmtMin(s.s)+'–'+fmtMin(s.e)).join(', ')}`:''}</div>` : '';
     timelineHtml = `<div class="timeline" id="timelineBar">${segs}${opOverlayHtml}<div class="now-marker" style="left:${minute/1440*100}%"></div></div>
       <div class="tlaxis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
       ${opLegendHtml}
@@ -1732,26 +1753,30 @@ function renderPanel(z){
     nowHtml = `<div class="nowcard"><div class="row1"><span class="tag" style="color:var(--warn);"><span class="d" style="background:var(--warn);"></span>${label}</span></div><div class="genre">${genreTxt}</div><p style="font-size:12px;color:var(--text-muted);margin:6px 0 0;">${sub}</p></div>`;
     timelineHtml=''; tableHtml='';
   }
+  const announceHtml = (z.announcements&&z.announcements.length) ? `<div class="infoblock"><h4>안내멘트 · 이벤트 BGM</h4>${z.announcements.map(a=>`<p class="muted"><b style="color:var(--text);">[${a.type==='eventBgm'?'이벤트 BGM':'안내멘트'}${a.time?' · '+a.time:''}]</b> ${a.text||'-'}</p>`).join('')}</div>` : '';
+  const dbSpotsHtml = (z.dbSpots&&z.dbSpots.length) ? `<p class="muted">${z.dbSpots.map(v=>{ const s=((cat&&cat.lux&&cat.lux.timeSlots)||[]).find(t=>t.id===v.slotId); return (s?s.label:v.slotId)+': '+(v.value||'-'); }).join(' · ')}</p>` : '';
+  const faderSpotsHtml = (z.faderSpots&&z.faderSpots.length) ? `<div class="infoblock"><h4>공간별 기준 페이더</h4><div class="faderChipRow">${z.faderSpots.map(v=>`<div class="faderChip"><div class="faderChipName">${v.name||'-'}</div><div class="faderChipValue">${v.value||'-'}</div>${v.memo?`<div class="faderChipMemo">${v.memo}</div>`:''}</div>`).join('')}</div></div>` : '';
   panel.innerHTML = `
     <div class="panel-head"><h3>${z.name}</h3></div>
     <div class="panel-en">${z.nameEn}</div>
     <div class="badges"><span class="badge acc">${categoryLabel(z.category)}</span><span class="badge">${(WINGS.find(w=>w.id===z.wing)||{title:''}).title.split(' · ')[0]}</span></div>
     ${eventBannerHtml}
     ${nowHtml}
-    <div class="dayToggle"><button id="btnWeekday" class="${panelDay==='weekday'?'active':''}">평일</button><button id="btnWeekend" class="${panelDay==='weekend'?'active':''}">주말</button></div>
-    <div class="infoblock" style="margin-top:0;padding-top:0;border-top:none;"><h4>운영시간</h4><p id="opText">${panelDay==='weekend'?z.operating.weekend:z.operating.weekday}</p></div>
+    <div class="dayToggle" id="dayToggleRow">${DAY_KEYS.map(d=>`<button data-day="${d}" class="${panelDay===d?'active':''}">${DAY_LABELS[d]}</button>`).join('')}</div>
+    <div class="infoblock" style="margin-top:0;padding-top:0;border-top:none;"><h4>운영시간</h4><p id="opText">${(panelDay==='sat'||panelDay==='sun')?z.operating.weekend:z.operating.weekday}</p></div>
     ${timelineHtml}${tableHtml}
+    ${announceHtml}
     <div class="infoblock"><h4>타깃 페르소나 / 목표 무드</h4><p>${z.persona||'-'}</p><p class="muted">${z.moodGoal||''}</p></div>
-    <div class="infoblock"><h4>음압(dB) 근거</h4><p class="muted">${z.dbNote||'-'}</p></div>
+    <div class="infoblock"><h4>음압(dB) 근거</h4>${dbSpotsHtml}<p class="muted">${z.dbNote||'-'}</p></div>
+    ${faderSpotsHtml}
     <div class="infoblock"><h4>조도(럭스) 기준 — ${categoryLabel(z.category)}</h4>
       <p class="muted">전체 기준 · 지금(${curSlot?curSlot.label:'-'}) ${zoneCurrentLux(z,cat,minute)}</p>
       ${lightSpotsViewHtml(z,cat,curSlot?curSlot.id:null)}
     </div>
     ${(z.rainDbNote||z.rainLux)?`<div class="infoblock"><h4>☔ 우천시 기록</h4>${z.rainDbNote?`<p class="muted">음압(dB): ${z.rainDbNote}</p>`:''}${z.rainLux?`<p class="muted">조도: ${z.rainLux}</p>`:''}</div>`:''}
     ${z.art?`<div class="infoblock"><h4>소닉 브랜딩</h4><div class="artnote"><b>${z.art.artist}</b> — ${z.art.piece}<br>${z.art.direction}</div></div>`:''}`;
-  const wkBtn=document.getElementById('btnWeekday'), weBtn=document.getElementById('btnWeekend');
-  wkBtn.onclick=()=>{ panelDay='weekday'; renderPanel(z); };
-  weBtn.onclick=()=>{ panelDay='weekend'; renderPanel(z); };
+  const dayRow=document.getElementById('dayToggleRow');
+  if(dayRow){ dayRow.querySelectorAll('button').forEach(btn=>{ btn.onclick=()=>{ panelDay=btn.dataset.day; renderPanel(z); }; }); }
   const bar=document.getElementById('timelineBar');
   if(bar){ bar.addEventListener('click',e=>{ const rect=bar.getBoundingClientRect(); const pct=(e.clientX-rect.left)/rect.width; state.previewMin=Math.max(0,Math.min(1439,Math.round(pct*1440))); state.followNow=false; renderPanel(z); }); }
   const resetBtn=document.getElementById('resetNowBtn');
@@ -2267,6 +2292,234 @@ function ensureOpHours(){ if(!adminDraft.operatingHours) adminDraft.operatingHou
 function addOpRangeRow(field){ collectDraftFromForm(); ensureOpHours(); if(!adminDraft.operatingHours[field]) adminDraft.operatingHours[field]=[]; adminDraft.operatingHours[field].push({s:'09:00',e:'18:00'}); renderAdminForm(); }
 function removeOpRangeRow(i,field){ collectDraftFromForm(); adminDraft.operatingHours[field].splice(i,1); renderAdminForm(); }
 
+/* ---- 구역 안 공간별 기준 페이더 값 ---- */
+function ensureFaderSpots(){ if(!adminDraft.faderSpots) adminDraft.faderSpots=[]; return adminDraft.faderSpots; }
+function addFaderSpot(){ collectDraftFromForm(); ensureFaderSpots().push({id:'fd-'+Math.random().toString(36).slice(2,8), name:'', value:'', memo:''}); renderAdminForm(); }
+function removeFaderSpot(i){ collectDraftFromForm(); ensureFaderSpots().splice(i,1); renderAdminForm(); }
+function readFaderSpotRow(row){ return {id:row.dataset.id, name:row.querySelector('.fd-name').value, value:row.querySelector('.fd-value').value, memo:row.querySelector('.fd-memo').value}; }
+function faderSpotRowHtml(v,i){
+  return `<div class="faderSpotRow" data-id="${v.id||''}" data-i="${i}">
+    <div class="fieldrow">
+      <div class="field"><label>공간 이름</label><input type="text" class="fd-name" value="${(v.name||'').replace(/"/g,'&quot;')}" placeholder="예: 라쿠 그룹석, 홀, 룸1"></div>
+      <div class="field"><label>기준 페이더 값</label><input type="text" class="fd-value" value="${(v.value||'').replace(/"/g,'&quot;')}" placeholder="예: -10dB"></div>
+    </div>
+    <div class="field"><label>메모 (조절 가능 여부 · 사유 등)</label><input type="text" class="fd-memo" value="${(v.memo||'').replace(/"/g,'&quot;')}" placeholder="예: 고객 요청으로 조절 가능"></div>
+    <div class="toolRow" style="justify-content:flex-end;"><button type="button" class="rmBtn" onclick="removeFaderSpot(${i})">×</button></div>
+  </div>`;
+}
+
+/* ---- 구역의 시간대별 dB(음압) ---- */
+function ensureDbSpots(){ if(!adminDraft.dbSpots) adminDraft.dbSpots=[]; return adminDraft.dbSpots; }
+function addDbSpotValue(){
+  collectDraftFromForm();
+  const cat=findCategory(adminDraft.category); if(!cat) return;
+  const list=ensureDbSpots();
+  const used=list.map(v=>v.slotId);
+  const next=(cat.lux.timeSlots||[]).find(s=>!used.includes(s.id));
+  if(!next){ toast('추가할 수 있는 시간대가 없습니다 — 이미 모든 시간대의 값이 있습니다'); return; }
+  list.push({slotId:next.id, value:''});
+  renderAdminForm();
+}
+function removeDbSpotValue(vi){ collectDraftFromForm(); ensureDbSpots().splice(vi,1); renderAdminForm(); }
+function zoneCurrentDb(z,cat,minute){
+  const slot=luxSlotForMinute(cat,minute);
+  if(slot){ const entry=(z.dbSpots||[]).find(v=>v.slotId===slot.id); if(entry && entry.value) return entry.value; }
+  return '';
+}
+
+/* ---- 구역의 시간대별 기준 페이더(매트릭스·요약용 — 공간별 상세와 별개) ---- */
+function ensureFaderTimeSpots(){ if(!adminDraft.faderTimeSpots) adminDraft.faderTimeSpots=[]; return adminDraft.faderTimeSpots; }
+function addFaderTimeSpotValue(){
+  collectDraftFromForm();
+  const cat=findCategory(adminDraft.category); if(!cat) return;
+  const list=ensureFaderTimeSpots();
+  const used=list.map(v=>v.slotId);
+  const next=(cat.lux.timeSlots||[]).find(s=>!used.includes(s.id));
+  if(!next){ toast('추가할 수 있는 시간대가 없습니다 — 이미 모든 시간대의 값이 있습니다'); return; }
+  list.push({slotId:next.id, value:''});
+  renderAdminForm();
+}
+function removeFaderTimeSpotValue(vi){ collectDraftFromForm(); ensureFaderTimeSpots().splice(vi,1); renderAdminForm(); }
+function zoneCurrentFader(z,cat,minute){
+  const slot=luxSlotForMinute(cat,minute);
+  if(slot){ const entry=(z.faderTimeSpots||[]).find(v=>v.slotId===slot.id); if(entry && entry.value) return entry.value; }
+  return '';
+}
+
+/* ---- 요일별 운영시간 · 브레이크타임 ---- */
+function ensureHoursByDay(){
+  if(!adminDraft.hoursByDay){
+    const wk=(adminDraft.operatingHours&&adminDraft.operatingHours.weekday&&adminDraft.operatingHours.weekday.length)?adminDraft.operatingHours.weekday:parseOperatingText(adminDraft.operating&&adminDraft.operating.weekday);
+    const we=(adminDraft.operatingHours&&adminDraft.operatingHours.weekend&&adminDraft.operatingHours.weekend.length)?adminDraft.operatingHours.weekend:parseOperatingText(adminDraft.operating&&adminDraft.operating.weekend);
+    const mk=list=>(list||[]).map(r=>({s:r.s,e:r.e,type:'open',label:''}));
+    adminDraft.hoursByDay = {mon:mk(wk),tue:mk(wk),wed:mk(wk),thu:mk(wk),fri:mk(wk),sat:mk(we),sun:mk(we)};
+  }
+  return adminDraft.hoursByDay;
+}
+let hourGroupsUI = null; // {zoneId, groups:[{days:[...], ranges:[{s,e,type,label}]}]}
+function normalizeRangeForCompare_(r){ return (r.s||'')+'|'+(r.e||'')+'|'+(r.type||'open')+'|'+(r.label||''); }
+function rangesEqual_(a,b){ return JSON.stringify((a||[]).map(normalizeRangeForCompare_)) === JSON.stringify((b||[]).map(normalizeRangeForCompare_)); }
+function buildHourGroupsFromHoursByDay_(){
+  const hbd = ensureHoursByDay();
+  const groups = [];
+  DAY_KEYS.forEach(day=>{
+    const ranges = hbd[day]||[];
+    const existing = groups.find(g=>rangesEqual_(g.ranges, ranges));
+    if(existing) existing.days.push(day);
+    else groups.push({days:[day], ranges: ranges.map(r=>({...r}))});
+  });
+  return groups;
+}
+function ensureHourGroupsUI(){
+  if(!hourGroupsUI || hourGroupsUI.zoneId !== adminDraft.id){
+    hourGroupsUI = { zoneId: adminDraft.id, groups: buildHourGroupsFromHoursByDay_() };
+  }
+  return hourGroupsUI.groups;
+}
+function collectHourGroupsFromDom_(){
+  if(!hourGroupsUI) return;
+  hourGroupsUI.groups.forEach((g,gi)=>{
+    const wrap=document.querySelector('.hgRows_'+gi);
+    if(wrap) g.ranges = [...wrap.querySelectorAll('.hg-row')].map(row=>({
+      s:row.querySelector('.hr-s').value.trim(), e:row.querySelector('.hr-e').value.trim(),
+      type:row.querySelector('.hr-type').value, label:row.querySelector('.hr-label').value.trim()
+    }));
+  });
+}
+function expandGroupsToHoursByDay_(){
+  ensureHoursByDay();
+  const assigned = new Set();
+  hourGroupsUI.groups.forEach(g=>{ g.days.forEach(d=>{ assigned.add(d); adminDraft.hoursByDay[d]=g.ranges.map(r=>({...r})); }); });
+  DAY_KEYS.forEach(d=>{ if(!assigned.has(d)) adminDraft.hoursByDay[d]=[]; });
+}
+function toggleHourGroupDay(gi,day,checked){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.forEach((g,i)=>{ if(i!==gi){ const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); } });
+  const g=hourGroupsUI.groups[gi];
+  if(checked){ if(!g.days.includes(day)) g.days.push(day); }
+  else { const idx=g.days.indexOf(day); if(idx>-1) g.days.splice(idx,1); }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroup(){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.push({days:[], ranges:[{s:'09:00',e:'18:00',type:'open',label:''}]});
+  renderAdminForm();
+}
+function removeHourGroup(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups.splice(gi,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function addHourGroupRange(gi){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.push({s:'09:00',e:'18:00',type:'open',label:''});
+  renderAdminForm();
+}
+function removeHourGroupRange(gi,ri){
+  collectHourGroupsFromDom_();
+  hourGroupsUI.groups[gi].ranges.splice(ri,1);
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function applyHourPreset(name){
+  collectHourGroupsFromDom_();
+  expandGroupsToHoursByDay_();
+  if(name==='weekday_weekend'){
+    hourGroupsUI.groups = [
+      {days:['mon','tue','wed','thu','fri'], ranges:(adminDraft.hoursByDay.mon||[]).map(r=>({...r}))},
+      {days:['sat','sun'], ranges:(adminDraft.hoursByDay.sat||[]).map(r=>({...r}))}
+    ];
+  } else if(name==='each_day'){
+    hourGroupsUI.groups = DAY_KEYS.map(d=>({days:[d], ranges:(adminDraft.hoursByDay[d]||[]).map(r=>({...r}))}));
+  } else if(name==='all_same'){
+    const base=(adminDraft.hoursByDay.mon||[]).map(r=>({...r}));
+    hourGroupsUI.groups = [{days:[...DAY_KEYS], ranges:base}];
+  }
+  expandGroupsToHoursByDay_();
+  renderAdminForm();
+}
+function hourGroupRangeRowHtml(r,gi,ri){
+  return `<div class="opRangeRow hg-row" data-ri="${ri}">
+    <input type="text" class="hr-s" value="${r.s}" placeholder="09:00" style="width:64px;">
+    <span style="color:var(--text-muted);">–</span>
+    <input type="text" class="hr-e" value="${r.e}" placeholder="18:00" style="width:64px;">
+    <select class="hr-type" style="max-width:112px;">
+      <option value="open" ${r.type!=='break'?'selected':''}>영업</option>
+      <option value="break" ${r.type==='break'?'selected':''}>브레이크타임</option>
+    </select>
+    <input type="text" class="hr-label" value="${(r.label||'').replace(/"/g,'&quot;')}" placeholder="메모(선택)" style="width:110px;">
+    <button type="button" class="rmBtn" onclick="removeHourGroupRange(${gi},${ri})">×</button>
+  </div>`;
+}
+function hourGroupRowHtml(g,gi){
+  const dayChecks = DAY_KEYS.map(d=>`<label><input type="checkbox" ${g.days.includes(d)?'checked':''} onchange="toggleHourGroupDay(${gi},'${d}',this.checked)"> ${DAY_LABELS[d]}</label>`).join('');
+  const rangesHtml = g.ranges.map((r,ri)=>hourGroupRangeRowHtml(r,gi,ri)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대가 없습니다(하루 종일 운영 전으로 표시됩니다).</p>';
+  return `<div class="hoursDayRow" data-gi="${gi}">
+    <div class="dayCheckRow">${dayChecks}</div>
+    <div class="hgRows_${gi}">${rangesHtml}</div>
+    <div class="toolRow" style="margin-top:8px;justify-content:space-between;">
+      <button type="button" class="addRowBtn" onclick="addHourGroupRange(${gi})">+ 시간대 추가</button>
+      <button type="button" class="rmBtn" onclick="removeHourGroup(${gi})">이 그룹 삭제</button>
+    </div>
+  </div>`;
+}
+function hoursByDayEditorHtml(){
+  const groups = ensureHourGroupsUI();
+  const assigned = new Set(); groups.forEach(g=>g.days.forEach(d=>assigned.add(d)));
+  const unassigned = DAY_KEYS.filter(d=>!assigned.has(d));
+  const warn = unassigned.length ? `<p class="muted" style="color:var(--bad);font-size:11.5px;margin:0 0 10px;">⚠ 아직 그룹에 포함되지 않은 요일: ${unassigned.map(d=>DAY_LABELS[d]).join(', ')} — 이 요일은 하루 종일 "운영 전"으로 표시됩니다. 아래에서 그룹에 체크해 넣어주세요.</p>` : '';
+  return `<p class="secdesc" style="margin:0 0 8px;max-width:none;font-size:11.5px;">같은 운영시간을 쓰는 요일끼리 그룹으로 묶어 한 번만 입력하면 됩니다. 요일마다 다르면 그룹을 나누고, 평일이 다 같으면 그룹 하나로 합치세요.</p>
+  <div class="toolRow" style="margin-bottom:10px;">
+    <button type="button" class="btnGhost" onclick="applyHourPreset('weekday_weekend')">평일 / 주말로 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('each_day')">요일별로 모두 나누기</button>
+    <button type="button" class="btnGhost" onclick="applyHourPreset('all_same')">모든 요일 하나로 합치기</button>
+  </div>
+  ${warn}
+  <div id="hourGroupsList">${groups.map((g,gi)=>hourGroupRowHtml(g,gi)).join('')}</div>
+  <button type="button" class="addRowBtn" onclick="addHourGroup()">+ 새 그룹 추가(예: 목~월 / 화~수 처럼 원하는 요일끼리)</button>`;
+}
+
+/* ---- 안내멘트 · 이벤트 BGM ---- */
+function ensureAnnouncements(){ if(!adminDraft.announcements) adminDraft.announcements=[]; return adminDraft.announcements; }
+function addAnnouncement(){ collectDraftFromForm(); ensureAnnouncements().push({id:'an-'+Math.random().toString(36).slice(2,8), type:'announcement', time:'', text:''}); renderAdminForm(); }
+function removeAnnouncement(i){ collectDraftFromForm(); ensureAnnouncements().splice(i,1); renderAdminForm(); }
+function readAnnouncementRow(row){ return {id:row.dataset.id, type:row.querySelector('.an-type').value, time:row.querySelector('.an-time').value, text:row.querySelector('.an-text').value}; }
+function announcementRowHtml(a,i){
+  return `<div class="announceRow" data-id="${a.id||''}" data-i="${i}">
+    <div class="fieldrow">
+      <div class="field" style="max-width:160px;"><label>구분</label><select class="an-type"><option value="announcement" ${a.type!=='eventBgm'?'selected':''}>안내멘트</option><option value="eventBgm" ${a.type==='eventBgm'?'selected':''}>이벤트 BGM</option></select></div>
+      <div class="field" style="max-width:180px;"><label>송출시간</label><input type="text" class="an-time" value="${(a.time||'').replace(/"/g,'&quot;')}" placeholder="예: 매시 정각 / 19:00~19:04"></div>
+    </div>
+    <div class="field"><label>멘트 · 내용</label><textarea class="an-text">${a.text||''}</textarea></div>
+    <div class="toolRow" style="justify-content:flex-end;"><button type="button" class="rmBtn" onclick="removeAnnouncement(${i})">×</button></div>
+  </div>`;
+}
+
+/* ---- 다른 층(예: 전체/기본층)에도 함께 표시 ---- */
+function ensureExtraFloors(){ if(!adminDraft.extraFloors) adminDraft.extraFloors=[]; return adminDraft.extraFloors; }
+function toggleExtraFloor(floorId,checked){
+  collectDraftFromForm();
+  const list=ensureExtraFloors();
+  const idx=list.findIndex(e=>e.floorId===floorId);
+  if(checked && idx<0){ list.push({floorId, mapX:adminDraft.mapX!=null?adminDraft.mapX:50, mapY:adminDraft.mapY!=null?adminDraft.mapY:50, pinSize:adminDraft.pinSize, pinColor:adminDraft.pinColor}); }
+  else if(!checked && idx>=0){ list.splice(idx,1); }
+  const zi=ZONES.findIndex(z=>z.id===adminDraft.id); if(zi>=0) ZONES[zi]={...ZONES[zi], extraFloors:list.map(v=>({...v}))};
+  persistZonePatch(adminDraft.id, {extraFloors:list.map(v=>({...v}))}, true);
+  renderAdminForm(); renderAdminMap();
+}
+function extraFloorsCheckboxHtml(){
+  const own=zoneFloor(adminDraft);
+  const list=ensureExtraFloors();
+  if(FLOORS.length<=1) return '<p class="muted" style="font-size:11.5px;">층이 1개뿐이라 추가로 표시할 다른 층이 없습니다.</p>';
+  const opts = FLOORS.filter(f=>f.id!==own).map(f=>{
+    const checked = list.some(e=>e.floorId===f.id);
+    return `<label><input type="checkbox" ${checked?'checked':''} onchange="toggleExtraFloor('${f.id}',this.checked)"> ${f.label}</label>`;
+  }).join('');
+  return `<div class="dayCheckRow">${opts}</div><p class="secdesc" style="margin:6px 0 0;max-width:none;font-size:11.5px;">체크한 층의 지도에도 이 구역 핀이 함께 표시됩니다. 그 층 지도 화면에서 핀을 드래그하면 그 층에서의 위치만 따로 저장되고, 원래 층(${(FLOORS.find(f=>f.id===own)||{label:'-'}).label})의 위치는 바뀌지 않습니다.</p>`;
+}
+
 function renderAdminForm(){
   const form=document.getElementById('adminForm'); if(!form) return;
   if(!adminDraft){ form.innerHTML='<div style="padding:40px;color:var(--text-muted);">← 왼쪽에서 구역을 선택하세요.</div>'; return; }
@@ -2281,6 +2534,7 @@ function renderAdminForm(){
     <div class="formTabs">
       <button type="button" class="formTabBtn ${zoneFormTab==='basic'?'active':''}" onclick="setZoneFormTab('basic')">기본 정보</button>
       <button type="button" class="formTabBtn ${zoneFormTab==='lighting'?'active':''}" onclick="setZoneFormTab('lighting')">💡 조명 · 조도</button>
+      <button type="button" class="formTabBtn ${zoneFormTab==='ops'?'active':''}" onclick="setZoneFormTab('ops')">🔊 페이더 · dB · 요일별 시간</button>
     </div>
     <div id="zoneTabBasic" ${zoneFormTab==='basic'?'':'hidden'}>
     <div class="fieldrow">
@@ -2305,7 +2559,13 @@ function renderAdminForm(){
           <label style="margin:0;font-size:12px;font-weight:700;color:var(--text);">이 구역만 다른 색으로 표시</label>
         </div>
         <input type="color" id="f_pinColor" value="${z.pinColor||'#a8752c'}" oninput="livePositionInput()" ${z.pinColor?'':'disabled'} style="width:52px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;">
+        ${colorPresetSwatchesHtml('f_pinColor')}
       </div>
+    </div>
+    <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+      <label>다른 층(예: 전체/기본층)에도 이 구역 표시</label>
+      <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">이 구역은 원래 "${(FLOORS.find(f=>f.id===zoneFloor(z))||{label:'-'}).label}"에 속해 있습니다. 아래에서 체크한 층의 지도에도 함께 표시되며, 그 층에서의 핀 위치는 원래 층과 별도로 저장됩니다.</p>
+      <div id="extraFloorsEditor">${extraFloorsCheckboxHtml()}</div>
     </div>
     <div class="fieldrow">
       <div class="field"><label>운영시간 — 평일</label><input type="text" id="f_opWeekday" value="${(z.operating&&z.operating.weekday||'').replace(/"/g,'&quot;')}"></div>
@@ -2351,6 +2611,12 @@ function renderAdminForm(){
       ${z.schedule?`<button type="button" class="addRowBtn" style="color:var(--bad);border-color:var(--bad-soft);" onclick="collectDraftFromForm();adminDraft.schedule=null;renderAdminForm();">스케줄 전체 삭제(이벤트성으로 전환)</button>`:`<button type="button" class="addRowBtn" onclick="collectDraftFromForm();adminDraft.schedule=[{s:'00:00',e:'24:00',g:''}];renderAdminForm();">스케줄 사용 시작</button>`}
     </div>
     <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+      <label>안내멘트 · 이벤트 BGM</label>
+      <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역에서 나가는 안내방송 멘트나 이벤트용 지정곡을 송출시간과 함께 기록합니다. (예: 19:00~19:04 지정곡1)</p>
+      <div id="announcementsEditor">${(z.announcements||[]).map((a,i)=>announcementRowHtml(a,i)).join('') || '<p class="zoneListEmpty">등록된 안내멘트·이벤트 BGM이 없습니다.</p>'}</div>
+      <button type="button" class="addRowBtn" onclick="addAnnouncement()">+ 안내멘트 · 이벤트 BGM 추가</button>
+    </div>
+    <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
       <div class="artToggleRow">
         <input type="checkbox" id="f_eventActive" ${z.eventActive?'checked':''}>
         <label style="margin:0;font-size:12.5px;font-weight:700;color:var(--text);">🎉 지금 이벤트 진행 중 — 화면에 이벤트 스케줄 표시</label>
@@ -2387,6 +2653,35 @@ function renderAdminForm(){
         <button type="button" class="addRowBtn" onclick="addLightSpot()">+ 상세 위치 추가</button>
       </div>
     </div>
+    <div id="zoneTabOps" ${zoneFormTab==='ops'?'':'hidden'}>
+      <div class="field">
+        <label>공간별 기준 페이더 값 + 메모</label>
+        <p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">이 구역 안에서 공간(그룹석·홀·룸 등)마다 기준 페이더 값이 다를 때 각각 등록합니다. 값을 유동적으로 조절하는 경우 메모에 사유를 남기세요.</p>
+        <div id="faderSpotsEditor">${(z.faderSpots||[]).map((v,i)=>faderSpotRowHtml(v,i)).join('') || '<p class="zoneListEmpty">등록된 공간별 페이더 값이 없습니다.</p>'}</div>
+        <button type="button" class="addRowBtn" onclick="addFaderSpot()">+ 공간별 페이더 추가</button>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>시간대별 음압(dB) 기록</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">주간/저녁/야간 등 시간대별로 실측·기준 dB 값을 기록합니다. 지도 탭과 매트릭스 탭에 그대로 표시됩니다.</p>
+        <div id="dbSpotsEditor">${(z.dbSpots||[]).map((v,vi)=>luxValueRowHtml(v,vi,(zCat&&zCat.lux&&zCat.lux.timeSlots)||[],`removeDbSpotValue(${vi})`)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대별 dB 값이 없습니다.</p>'}</div>
+        <div class="toolRow" style="margin-top:6px;">
+          ${((z.dbSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addDbSpotValue()">+ 시간대 dB값 추가</button>` : ''}
+        </div>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>시간대별 기준 페이더 (매트릭스 탭에 짧게 표시됨)</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">위 "공간별 기준 페이더"는 지도 탭 상세 화면에 공간별로 자세히 표시되고, 여기 값은 매트릭스 탭 등에 시간대별로 짧게 요약해 보여주는 용도입니다.</p>
+        <div id="faderTimeSpotsEditor">${(z.faderTimeSpots||[]).map((v,vi)=>luxValueRowHtml(v,vi,(zCat&&zCat.lux&&zCat.lux.timeSlots)||[],`removeFaderTimeSpotValue(${vi})`)).join('') || '<p class="muted" style="font-size:11.5px;">등록된 시간대별 기준 페이더가 없습니다.</p>'}</div>
+        <div class="toolRow" style="margin-top:6px;">
+          ${((z.faderTimeSpots||[]).length < ((zCat&&zCat.lux&&zCat.lux.timeSlots)||[]).length) ? `<button type="button" class="addRowBtn" onclick="addFaderTimeSpotValue()">+ 시간대 페이더값 추가</button>` : ''}
+        </div>
+      </div>
+      <div class="field" style="border-top:1px solid var(--border);padding-top:16px;">
+        <label>요일별 운영시간 · 브레이크타임</label>
+        <p class="secdesc" style="margin:2px 0 8px;max-width:none;font-size:12px;">요일마다 다른 운영시간을 넣거나, 영업 중간에 브레이크타임 구간을 표시할 수 있습니다. 지도 탭 타임라인의 빗금·문구에 그대로 반영됩니다. 비워두면 "기본 정보"의 평일/주말 텍스트에서 자동으로 가져옵니다.</p>
+        <div id="hoursByDayEditor">${hoursByDayEditorHtml()}</div>
+      </div>
+    </div>
     <div class="saveRow">
       <button class="btnPrimary" onclick="saveZone()">저장하기</button>
       ${SEED_ZONES.some(s=>s.id===z.id) ? `<button class="btnGhost" onclick="resetZoneToSeed()">초기값으로 되돌리기</button>` : ''}
@@ -2398,7 +2693,7 @@ function addNewZone(){
   const id = 'zone-' + Date.now().toString(36);
   const z = {id, wing:WINGS[0].id, floor:(adminFloor||(FLOORS[0]&&FLOORS[0].id)), order:ZONES.length, mapX:50, mapY:50, pinSize:DEFAULT_PIN_SIZE, name:'새 구역', nameEn:'', category:CATEGORIES[0].id,
     persona:'', moodGoal:'', operating:{weekday:'', weekend:''}, schedule:[{s:'00:00',e:'24:00',g:''}], dbNote:'', faderNote:'', art:null,
-    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[]};
+    eventActive:false, eventNote:'', eventSchedule:null, pinColor:null, rainDbNote:'', rainLux:'', operatingHours:null, lightSpots:[], standardLux:[], extraFloors:[], announcements:[], faderSpots:[], dbSpots:[], faderTimeSpots:[], hoursByDay:null};
   ZONES.push(z);
   adminSelectedId=id; adminDraft=cloneZone(z);
   renderAdminList(); renderAdminForm(); renderAdminMap();
@@ -2467,6 +2762,22 @@ function collectDraftFromForm(){
   const hasArtEl=document.getElementById('f_hasArt');
   if(hasArtEl){
     adminDraft.art = hasArtEl.checked ? {artist:document.getElementById('f_artist').value, piece:document.getElementById('f_piece').value, direction:document.getElementById('f_direction').value} : null;
+  }
+  if(document.getElementById('announcementsEditor')){
+    adminDraft.announcements = [...document.querySelectorAll('#announcementsEditor .announceRow')].map(readAnnouncementRow);
+  }
+  if(document.getElementById('faderSpotsEditor')){
+    adminDraft.faderSpots = [...document.querySelectorAll('#faderSpotsEditor .faderSpotRow')].map(readFaderSpotRow);
+  }
+  if(document.getElementById('dbSpotsEditor')){
+    adminDraft.dbSpots = [...document.querySelectorAll('#dbSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
+  }
+  if(document.getElementById('faderTimeSpotsEditor')){
+    adminDraft.faderTimeSpots = [...document.querySelectorAll('#faderTimeSpotsEditor .ls-valueRow')].map(row=>({slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value}));
+  }
+  if(document.getElementById('hoursByDayEditor') && hourGroupsUI){
+    collectHourGroupsFromDom_();
+    expandGroupsToHoursByDay_();
   }
 }
 
@@ -2590,12 +2901,14 @@ function renderStructureForm(){
       <button type="button" class="${structureTab==='wings'?'active':''}" onclick="setStructureTab('wings')">동(棟)</button>
       <button type="button" class="${structureTab==='floors'?'active':''}" onclick="setStructureTab('floors')">층</button>
       <button type="button" class="${structureTab==='categories'?'active':''}" onclick="setStructureTab('categories')">카테고리 · 조도</button>
+      <button type="button" class="${structureTab==='colorPresets'?'active':''}" onclick="setStructureTab('colorPresets')">색상 프리셋</button>
     </div>
     <div id="structureBody"></div>
   `;
   const body=document.getElementById('structureBody');
   if(structureTab==='wings') body.innerHTML = renderWingsTab();
   else if(structureTab==='floors') body.innerHTML = renderFloorsTab();
+  else if(structureTab==='colorPresets') body.innerHTML = renderColorPresetsTab();
   else body.innerHTML = renderCategoriesTab();
 }
 
@@ -2817,6 +3130,69 @@ async function saveCategories(){
   }
   renderFilters(); renderMatrix(); if(state.selected) renderPanel(state.selected);
   if(adminUnlocked && adminMode==='zones') renderAdminForm();
+}
+
+/* ---- 지도 핀 색상 프리셋 ---- */
+function colorPresetSwatchesHtml(inputId){
+  const list = (CONTENT.colorPresets||[]);
+  const swatches = list.map(p=>`<button type="button" class="colorSwatchBtn" title="${(p.name||p.hex).replace(/"/g,'&quot;')}" style="background:${p.hex};" onclick="pickColorPreset('${inputId}','${p.hex}')"></button>`).join('');
+  return `<div class="colorPresetRow" data-for="${inputId}">${swatches}<button type="button" class="colorSwatchBtn colorSwatchAdd" title="지금 색상을 프리셋으로 저장" onclick="promptSaveColorPreset('${inputId}')">+</button></div>`;
+}
+function pickColorPreset(inputId,hex){
+  const el=document.getElementById(inputId); if(!el) return;
+  el.value=hex; el.disabled=false;
+  const useBox=document.getElementById(inputId==='f_pinColor'?'f_useCustomColor':null);
+  if(useBox) useBox.checked=true;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+  el.dispatchEvent(new Event('change',{bubbles:true}));
+}
+async function promptSaveColorPreset(inputId){
+  const el=document.getElementById(inputId); if(!el) return;
+  const name=(prompt('이 색상을 프리셋 이름으로 저장합니다. 이름을 입력하세요 (예: 우리 브랜드 골드)')||'').trim();
+  if(!name) return;
+  CONTENT.colorPresets = [...(CONTENT.colorPresets||[]), {id:'cp-'+Date.now().toString(36), name, hex:el.value}];
+  await saveColorPresets(true);
+  document.querySelectorAll(`.colorPresetRow[data-for="${inputId}"]`).forEach(row=>{ row.outerHTML = colorPresetSwatchesHtml(inputId); });
+  toast('색상 프리셋이 저장되었습니다: '+name);
+}
+async function saveColorPresets(silent){
+  const payload={items:CONTENT.colorPresets||[]};
+  if(dbHandle){
+    try{ await dbHandle.doc('content/colorPresets').set(payload); if(!silent) toast('색상 프리셋이 저장되었습니다 — 모든 화면에 실시간 반영됩니다'); }
+    catch(e){ if(!silent) toast('저장 실패 — 편집 권한을 확인하세요'); }
+  } else {
+    saveContentLocalOverride('colorPresets', payload); localMode=true; setLivePill();
+    if(!silent) toast('색상 프리셋 — 이 기기의 브라우저에만 저장됩니다(다른 사람과 공유되지 않음)');
+  }
+}
+function renderColorPresetsTab(){
+  const list=CONTENT.colorPresets||[];
+  return `
+    <p class="secdesc" style="margin-bottom:14px;max-width:none;">지도 핀 등 색상을 고르는 곳에 아래 프리셋이 함께 표시됩니다. 자주 쓰는 색을 저장해두면 매번 같은 색을 찾아 고를 필요가 없습니다. 색상 선택 칸 옆의 "+" 버튼으로도 바로 추가할 수 있습니다.</p>
+    <div id="colorPresetsEditor">${list.map((p,i)=>colorPresetRowHtml(p,i)).join('')}</div>
+    <button type="button" class="addRowBtn" onclick="addColorPresetRow()">+ 프리셋 추가</button>
+    <div class="saveRow"><button class="btnPrimary" onclick="saveColorPresetsFromForm()">색상 프리셋 저장</button><span class="saveState" id="colorPresetsSaveState"></span></div>
+  `;
+}
+function colorPresetRowHtml(p,i){
+  return `<div class="cardEditor" data-i="${i}" style="display:flex;gap:10px;align-items:center;">
+    <input type="color" class="cp-hex" value="${p.hex||'#a8752c'}" style="width:44px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;">
+    <div style="flex:1;"><input type="text" class="cp-name" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="프리셋 이름"></div>
+    <button type="button" class="rmBtn" onclick="removeColorPresetRow(${i})">×</button>
+  </div>`;
+}
+function collectColorPresetsFromForm(){
+  const cards=[...document.querySelectorAll('#colorPresetsEditor .cardEditor')];
+  CONTENT.colorPresets = cards.map((card,i)=>({ id:(list=>list[i]&&list[i].id||'cp-'+Date.now().toString(36)+i)(CONTENT.colorPresets||[]), name:card.querySelector('.cp-name').value, hex:card.querySelector('.cp-hex').value }));
+}
+function addColorPresetRow(){ collectColorPresetsFromForm(); CONTENT.colorPresets.push({id:'cp-'+Date.now().toString(36), name:'새 색상', hex:'#a8752c'}); renderStructureForm(); }
+function removeColorPresetRow(i){ collectColorPresetsFromForm(); CONTENT.colorPresets.splice(i,1); renderStructureForm(); }
+async function saveColorPresetsFromForm(){
+  collectColorPresetsFromForm();
+  const stateEl=document.getElementById('colorPresetsSaveState');
+  await saveColorPresets(true);
+  if(stateEl){ stateEl.textContent='✓ 저장 완료'; stateEl.style.color='var(--good)'; }
+  toast('색상 프리셋이 저장되었습니다 — 모든 화면에 실시간 반영됩니다');
 }
 
 /* ---------- 화면 문구(UI Text) admin ---------- */
