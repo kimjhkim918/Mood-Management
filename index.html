@@ -1465,12 +1465,14 @@ function loadHiddenZoneIds(){ try{ return new Set(JSON.parse(localStorage.getIte
 function saveHiddenZoneIds(){ try{ localStorage.setItem(HIDDEN_ZONES_KEY, JSON.stringify([...hiddenZoneIds])); }catch(e){} }
 let hiddenZoneIds = loadHiddenZoneIds();
 let zoneManageOpen = false;
-function toggleZoneManage(){ zoneManageOpen=!zoneManageOpen; renderZoneList(); }
+function toggleZoneManage(){ if(!adminUnlocked) return; zoneManageOpen=!zoneManageOpen; renderZoneList(); }
 function toggleZoneHidden(id,visible){
+  if(!adminUnlocked) return;
   if(visible) hiddenZoneIds.delete(id); else hiddenZoneIds.add(id);
   saveHiddenZoneIds(); renderZoneList();
 }
 function setZonesHidden(ids,hidden){
+  if(!adminUnlocked) return;
   ids.forEach(id=> hidden ? hiddenZoneIds.add(id) : hiddenZoneIds.delete(id));
   saveHiddenZoneIds(); renderZoneList();
 }
@@ -1496,12 +1498,12 @@ function renderZoneList(){
   const groupsHtml = groups.length ? groups.map(({w,zs})=>`<div class="zoneListGroup">
       <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
       <div class="zoneListChips">${zs.map(z=>`<button type="button" class="zoneChip${(state.selected&&state.selected.id===z.id)?' active':''}" onclick="selectZone('${z.id}')">${z.name}</button>`).join('')}</div>
-    </div>`).join('') : `<p class="zoneListEmpty">표시로 선택된 구역이 없습니다 — '구역 편집'에서 다시 켜세요.</p>`;
+    </div>`).join('') : `<p class="zoneListEmpty">${adminUnlocked?`표시로 선택된 구역이 없습니다 — '구역 편집'에서 다시 켜세요.`:'표시할 구역이 없습니다.'}</p>`;
   const selectedId = state.selected ? state.selected.id : '';
   const optionsHtml = groups.map(({w,zs})=>`<optgroup label="${w?w.title.split(' · ')[0]:'-'}">${zs.map(z=>`<option value="${z.id}" ${z.id===selectedId?'selected':''}>${z.name}</option>`).join('')}</optgroup>`).join('');
   const manageGroups = groupZonesByWing(matchedZones);
   const allIds = matchedZones.map(z=>z.id);
-  const manageHtml = zoneManageOpen ? `<div class="zoneManagePanel">
+  const manageHtml = (adminUnlocked && zoneManageOpen) ? `<div class="zoneManagePanel">
       <div class="zoneManageActions">
         <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},false)'>전체 표시</button>
         <button type="button" class="zoneListManageBtn" onclick='setZonesHidden(${JSON.stringify(allIds)},true)'>전체 숨김</button>
@@ -1511,7 +1513,8 @@ function renderZoneList(){
         <div class="zoneManageItems">${zs.map(z=>`<label class="zoneManageItem"><input type="checkbox" ${hiddenZoneIds.has(z.id)?'':'checked'} onchange="toggleZoneHidden('${z.id}',this.checked)"><span>${z.name}</span></label>`).join('')}</div>
       </div>`).join('')}
     </div>` : '';
-  wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · ${visibleZones.length}개 구역 표시 중${hiddenCount?` (숨김 ${hiddenCount}개)`:''} — 눌러서 선택</span><button type="button" class="zoneListManageBtn" onclick="toggleZoneManage()">${zoneManageOpen?'닫기':'구역 편집'}</button></div>
+  const manageBtnHtml = adminUnlocked ? `<button type="button" class="zoneListManageBtn" onclick="toggleZoneManage()">${zoneManageOpen?'닫기':'구역 편집'}</button>` : '';
+  wrap.innerHTML = `<div class="zoneListHead"><span class="zoneListHeadTxt">${headingTxt} · ${visibleZones.length}개 구역 표시 중${hiddenCount?` (숨김 ${hiddenCount}개)`:''} — 눌러서 선택</span>${manageBtnHtml}</div>
     ${manageHtml}
     <select class="zoneListSelect" id="zoneListSelect" onchange="selectZone(this.value)">
       <option value="" disabled ${selectedId?'':'selected'}>구역을 선택하세요</option>
@@ -3084,6 +3087,7 @@ function enterAdmin(){
 function exitAdmin(){
   document.getElementById('adminRoot').hidden = true;
   document.getElementById('viewerRoot').hidden = false;
+  renderZoneList();
 }
 function checkPin(){
   const v=document.getElementById('pinInput').value;
