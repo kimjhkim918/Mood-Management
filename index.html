@@ -208,12 +208,17 @@ nav.pages button.active{background:var(--accent);color:#fff;}
 .nowcard .previewtime{font-size:12px;color:var(--text-muted);font-weight:700;}
 .nowcard .genre{font-size:17px;font-weight:700;margin-bottom:4px;}
 .genreHover{cursor:help;}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px;}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px;align-items:center;}
 .chip{font-size:10.8px;padding:2.5px 8px;border-radius:7px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);}
+.chip.chipEditable{display:inline-flex;align-items:center;gap:4px;}
+.chipRm{border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0;line-height:1;}
+.chipAddSelect{font-size:10.8px;padding:2.5px 6px;border-radius:7px;background:var(--surface);border:1px dashed var(--border-strong);color:var(--text-muted);}
+.chipResetBtn{font-size:10.5px;border:none;background:none;color:var(--accent);cursor:pointer;font-weight:700;padding:0;}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
 .metric{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 10px;}
 .metric .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);margin-bottom:2px;font-weight:700;}
 .metric .v{font-size:13px;font-weight:700;}
+.metric .v input.panelBpmInput{width:100%;box-sizing:border-box;font-size:13px;font-weight:700;border:1px solid var(--border-strong);border-radius:6px;padding:3px 6px;background:var(--surface-2);color:var(--text);}
 
 .dayToggle{display:flex;gap:4px;background:var(--surface-2);padding:3px;border-radius:9px;margin-bottom:10px;}
 .dayToggle button{flex:1;border:none;background:transparent;padding:7px 10px;border-radius:7px;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
@@ -599,6 +604,13 @@ function tagFor(genreStr){
     if(kws.some(kw=>s.includes(kw))){found.push(g);}
   }
   return found.length?found:[{label:genreStr,mood:"-",bpm:"-",use:"-"}];
+}
+function tagsForBlock(b){
+  if(b && b.genreTags && b.genreTags.length){
+    const found=b.genreTags.map(lbl=>CONTENT.genreGuide.find(g=>g.label===lbl)).filter(Boolean);
+    if(found.length) return found;
+  }
+  return tagFor(b?b.g:"");
 }
 function colorFor(genreStr){
   const s=(genreStr||"").toLowerCase();
@@ -1270,7 +1282,8 @@ function updateClock(){
   const wk=(d.getDay()===0||d.getDay()===6);
   document.getElementById('dayPill').textContent = wk?'주말':'평일';
   document.getElementById('clockDot').className = 'dot'+(isLive?'':' stale');
-  if(state.selected && state.followNow){ renderPanel(state.selected); }
+  const editingNowCard = document.activeElement && document.activeElement.closest && document.activeElement.closest('#nowCard');
+  if(state.selected && state.followNow && !editingNowCard){ renderPanel(state.selected); }
   renderMap(); renderMatrix();
 }
 setInterval(updateClock,1000);
@@ -1773,13 +1786,18 @@ function renderPanel(z){
   const faderDisplay = zoneCurrentFader(z,cat,minute) || (z.faderNote||'-');
   let nowHtml, timelineHtml, tableHtml;
   if(sched && sched.length){
-    const cur=blockAt(sched,minute); const tags=tagFor(cur.g);
-    nowHtml = `<div class="nowcard">
+    const cur=blockAt(sched,minute); const curIdx=blockIndexAt(sched,minute); const curField=usingEvent?'eventSchedule':'schedule'; const tags=tagsForBlock(cur);
+    const bpmDisplay = cur.bpm || (tags[0]&&tags[0].bpm) || '-';
+    const bpmHtml = adminUnlocked
+      ? `<input type="text" class="panelBpmInput" value="${(cur.bpm||'').replace(/"/g,'&quot;')}" placeholder="${((tags[0]&&tags[0].bpm)||'-').replace(/"/g,'&quot;')}" onchange="savePanelBpm(this)">`
+      : bpmDisplay;
+    const chipsHtml = adminUnlocked ? panelChipsEditableHtml(tags,cur) : tags.map(t=>`<span class="chip">${t.label} · ${t.mood}</span>`).join('');
+    nowHtml = `<div class="nowcard" id="nowCard" data-zone="${z.id}" data-field="${curField}" data-idx="${curIdx}">
         <div class="row1"><span class="tag"><span class="d"></span>${isNowView?(usingEvent?'이벤트 재생중':'지금 재생중'):'미리보기'}</span><span class="previewtime">${fmtMin(minute)}</span></div>
         <div class="genre genreHover">${cur.g}</div>
-        <div class="chips">${tags.map(t=>`<span class="chip">${t.label} · ${t.mood}</span>`).join('')}</div>
+        <div class="chips">${chipsHtml}</div>
         <div class="metrics">
-          <div class="metric"><div class="k">참고 BPM</div><div class="v">${tags[0].bpm}</div></div>
+          <div class="metric"><div class="k">참고 BPM</div><div class="v">${bpmHtml}</div></div>
           <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${dbNow||'-'}</div></div>
           <div class="metric"><div class="k">조도(현재대)</div><div class="v" style="font-size:11px;">${zoneCurrentLux(z,cat,minute)}</div></div>
           <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
@@ -1794,7 +1812,7 @@ function renderPanel(z){
       ${opLegendHtml}
       <div style="text-align:right;margin-top:6px;"><button id="resetNowBtn" style="font-size:11px;border:none;background:none;color:var(--accent);cursor:pointer;font-weight:700;">↺ 지금 시각으로</button></div>`;
     tableHtml = `<table class="schedTable"><thead><tr><th>시간</th><th>장르</th><th>무드/BPM 참고</th></tr></thead><tbody>
-      ${sched.map(b=>{ const active=b===cur; const t=tagFor(b.g)[0]; return `<tr class="${active?'current':''}"><td class="t">${b.s}–${b.e}</td><td class="genreHover">${b.g}</td><td style="color:var(--text-muted);">${t.label} · ${t.bpm} BPM</td></tr>`; }).join('')}
+      ${sched.map(b=>{ const active=b===cur; const t=tagsForBlock(b)[0]; return `<tr class="${active?'current':''}"><td class="t">${b.s}–${b.e}</td><td class="genreHover">${b.g}</td><td style="color:var(--text-muted);">${t.label} · ${b.bpm||t.bpm} BPM</td></tr>`; }).join('')}
     </tbody></table>`;
   } else {
     const label = usingEvent ? '이벤트 진행 중' : '이벤트성 운영';
@@ -1845,6 +1863,50 @@ function showGenreTooltip(genreStr, timeRange, e){
   t.innerHTML = `<strong>${timeRange?timeRange+' · ':''}${genreStr}</strong>${lines}`;
   t.hidden=false;
   moveMapTooltip(e);
+}
+
+/* ---------- 지도 카드 — 참고 BPM / 장르 태그 직접 수정(admin) ---------- */
+function panelChipsEditableHtml(tags,cur){
+  const current = tags.map(t=>t.label);
+  const chips = tags.map(t=>`<span class="chip chipEditable">${t.label} · ${t.mood}<button type="button" class="chipRm" data-label="${(t.label||'').replace(/"/g,'&quot;')}" onclick="removePanelGenreTag(this)" title="제거">×</button></span>`).join('') || `<span class="chip chipEditable chipEmpty">일치하는 장르 없음</span>`;
+  const options = CONTENT.genreGuide.filter(g=>!current.includes(g.label)).map(g=>`<option value="${(g.label||'').replace(/"/g,'&quot;')}">${g.label}</option>`).join('');
+  const resetBtn = (cur.genreTags && cur.genreTags.length) ? `<button type="button" class="chipResetBtn" onclick="resetPanelGenreTags(this)">자동으로 되돌리기</button>` : '';
+  return `${chips}<select class="chipAddSelect" onchange="addPanelGenreTag(this)"><option value="">+ 장르 추가</option>${options}</select>${resetBtn}`;
+}
+function nowCardContext(el){
+  const wrap = el.closest('#nowCard'); if(!wrap) return null;
+  return { zoneId: wrap.dataset.zone, field: wrap.dataset.field, idx: parseInt(wrap.dataset.idx,10) };
+}
+function currentPanelTags(zoneId,field,idx){
+  const z=ZONES.find(zz=>zz.id===zoneId); const b=z && z[field] && z[field][idx]; if(!b) return [];
+  return (b.genreTags && b.genreTags.length) ? b.genreTags.slice() : tagFor(b.g).map(t=>t.label);
+}
+function savePanelBlockField(zoneId,field,idx,patchObj){
+  const z=ZONES.find(zz=>zz.id===zoneId); if(!z || !z[field] || !z[field][idx]) return;
+  const sched=z[field].map(b=>({...b}));
+  sched[idx]={...sched[idx],...patchObj};
+  persistMatrixPatch(zoneId,{[field]:sched},'참고 BPM · 장르 태그가 저장되었습니다');
+  if(state.selected && state.selected.id===zoneId){ state.selected=ZONES.find(zz=>zz.id===zoneId); renderPanel(state.selected); }
+}
+function savePanelBpm(input){
+  const ctx=nowCardContext(input); if(!ctx) return;
+  savePanelBlockField(ctx.zoneId,ctx.field,ctx.idx,{bpm: input.value.trim() || null});
+}
+function addPanelGenreTag(sel){
+  const val=sel.value; if(!val) return;
+  const ctx=nowCardContext(sel); if(!ctx) return;
+  const tags=currentPanelTags(ctx.zoneId,ctx.field,ctx.idx);
+  if(!tags.includes(val)) tags.push(val);
+  savePanelBlockField(ctx.zoneId,ctx.field,ctx.idx,{genreTags:tags});
+}
+function removePanelGenreTag(btn){
+  const ctx=nowCardContext(btn); if(!ctx) return;
+  const tags=currentPanelTags(ctx.zoneId,ctx.field,ctx.idx).filter(l=>l!==btn.dataset.label);
+  savePanelBlockField(ctx.zoneId,ctx.field,ctx.idx,{genreTags:tags});
+}
+function resetPanelGenreTags(btn){
+  const ctx=nowCardContext(btn); if(!ctx) return;
+  savePanelBlockField(ctx.zoneId,ctx.field,ctx.idx,{genreTags:null});
 }
 
 let matrixSort={k:'wing',dir:1};
@@ -2310,12 +2372,16 @@ function schedRowHtml(b,i,total,field){
       <button type="button" class="moveBtn" onclick="moveSchedRow(${i},1,'${field}')" ${i===total-1?'disabled':''}>▼</button>
       <button class="rmBtn" style="width:26px;height:30px;" onclick="removeSchedRow(${i},'${field}')">×</button>
     </div>
+    <input type="hidden" class="sc-bpm-pass" value="${(b.bpm||'').replace(/"/g,'&quot;')}">
+    <input type="hidden" class="sc-gtags-pass" value="${(b.genreTags||[]).join('|||').replace(/"/g,'&quot;')}">
   </div>`;
 }
 function readSchedRow(r){
   const autoEl=r.querySelector('.sc-color-auto');
   const isAuto = !autoEl || autoEl.value==='1';
-  return { s:r.querySelector('.sc-s').value.trim(), e:r.querySelector('.sc-e').value.trim(), g:r.querySelector('.sc-g').value.trim(), color: isAuto?null:r.querySelector('.sc-color').value };
+  const bpmPass=r.querySelector('.sc-bpm-pass'); const gtagsPass=r.querySelector('.sc-gtags-pass');
+  const genreTags = gtagsPass && gtagsPass.value ? gtagsPass.value.split('|||').filter(Boolean) : null;
+  return { s:r.querySelector('.sc-s').value.trim(), e:r.querySelector('.sc-e').value.trim(), g:r.querySelector('.sc-g').value.trim(), color: isAuto?null:r.querySelector('.sc-color').value, bpm: (bpmPass&&bpmPass.value)||null, genreTags };
 }
 function resetSchedRowColor(btn){
   const row=btn.closest('.schedRow');
