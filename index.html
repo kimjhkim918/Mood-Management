@@ -255,6 +255,13 @@ table{width:100%;border-collapse:collapse;font-size:12.6px;}
 .ls-valueRow{display:flex;gap:6px;align-items:center;}
 .ls-valueRow select.ls-slot{flex:none;width:110px;padding:8px 9px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.5px;}
 .ls-valueRow input.ls-value{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.5px;}
+.ls-valueRow.withReason{flex-wrap:wrap;}
+.ls-valueRow input.ls-reason{flex:1 1 100%;padding:6px 10px;border-radius:8px;border:1px dashed var(--border-strong);background:var(--surface);color:var(--text);font-size:11.5px;}
+.lsValueChip[title]{cursor:help;}
+.metric .v input.panelDbInput{width:100%;box-sizing:border-box;font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:6px;padding:3px 6px;background:var(--surface-2);color:var(--text);}
+.zoneManageItemRow{display:inline-flex;align-items:center;gap:2px;}
+.zoneMoveBtn{border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:10px;padding:2px 3px;}
+.zoneMoveBtn:disabled{opacity:.3;cursor:default;}
 .ls-removeBtn{flex:none;width:28px;height:28px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--bad);cursor:pointer;font-size:14px;line-height:1;}
 .ls-removeBtn:hover{background:var(--bad-soft);}
 .ls-lightItems{display:flex;flex-direction:column;gap:10px;margin-bottom:2px;}
@@ -721,7 +728,8 @@ function lightSpotsViewHtml(z,cat,currentSlotId){
       const chips=(light.values||[]).map(v=>{
         const slot=((cat&&cat.lux&&cat.lux.timeSlots)||[]).find(s=>s.id===v.slotId);
         const isCurrent = v.slotId===currentSlotId;
-        return `<span class="lsValueChip${isCurrent?' current':''}">${slot?slot.label:v.slotId}: ${v.value||'-'}</span>`;
+        const reasonAttr = v.reason ? ` title="${String(v.reason).replace(/"/g,'&quot;')}"` : '';
+        return `<span class="lsValueChip${isCurrent?' current':''}"${reasonAttr}>${slot?slot.label:v.slotId}: ${v.value||'-'}${v.reason?' ⓘ':''}</span>`;
       }).join('') || '<span class="muted" style="font-size:11.5px;">등록된 값 없음</span>';
       return `<div class="lsLightGroup"><span class="lightTag">💡 ${lightTypeLabel(cat,light.lightTypeId)}</span><div class="lsValues">${chips}</div></div>`;
     }).join('') || '<span class="muted" style="font-size:11.5px;">등록된 조명 없음</span>';
@@ -1529,6 +1537,24 @@ function setZonesHidden(ids,hidden){
   const panel2=document.querySelector('.zoneManagePanel'); if(panel2) panel2.scrollTop=scrollTop;
   window.scrollTo(window.scrollX, pageY);
 }
+/* 구역 순서 변경 — 같은 그룹(소속 구역 목록) 안에서 위/아래로 이동. order 값이 비어있거나 겹쳐도 안전하게 동작 */
+async function reorderZoneInGroup(id,dir,groupIds){
+  if(!adminUnlocked) return;
+  const gi=groupIds.indexOf(id), ti=gi+dir; if(gi<0||ti<0||ti>=groupIds.length) return;
+  const a=ZONES.find(zz=>zz.id===id), b=ZONES.find(zz=>zz.id===groupIds[ti]); if(!a||!b) return;
+  const before=new Map(ZONES.map(zz=>[zz.id,zz.order]));
+  const ia=ZONES.indexOf(a), ib=ZONES.indexOf(b);
+  ZONES[ia]=b; ZONES[ib]=a;
+  const distinct = a.order!=null && b.order!=null && a.order!==b.order;
+  if(distinct){ const t=a.order; a.order=b.order; b.order=t; }
+  else { ZONES.forEach((zz,i)=>{ zz.order=i; }); }
+  ZONES.sort((x,y)=>(x.order!=null?x.order:9999)-(y.order!=null?y.order:9999));
+  const changed=ZONES.filter(zz=>before.get(zz.id)!==zz.order);
+  const pageY=window.scrollY; const panel=document.querySelector('.zoneManagePanel'); const st=panel?panel.scrollTop:0;
+  renderMap(); renderMatrix(); if(document.getElementById('adminList')) renderAdminList();
+  const p2=document.querySelector('.zoneManagePanel'); if(p2) p2.scrollTop=st; window.scrollTo(window.scrollX,pageY);
+  for(const zz of changed){ await persistZonePatch(zz.id,{order:zz.order},true); }
+}
 function groupZonesByWing(list){
   const wingOrder={}; WINGS.forEach((w,i)=>{ wingOrder[w.id]=i; });
   const byWing={}; list.forEach(z=>{ (byWing[z.wing]=byWing[z.wing]||[]).push(z); });
@@ -1565,7 +1591,7 @@ function renderZoneList(){
       </div>
       ${manageGroups.map(({w,zs})=>`<div class="zoneManageGroup">
         <div class="zoneListGroupTitle">${w?w.title.split(' · ')[0]:'-'}</div>
-        <div class="zoneManageItems">${zs.map(z=>`<label class="zoneManageItem"><input type="checkbox" ${hiddenZoneIds.has(z.id)?'':'checked'} onchange="toggleZoneHidden('${z.id}',this.checked)"><span>${z.name}</span></label>`).join('')}</div>
+        <div class="zoneManageItems">${zs.map((z,zi)=>`<span class="zoneManageItemRow"><label class="zoneManageItem"><input type="checkbox" ${hiddenZoneIds.has(z.id)?'':'checked'} onchange="toggleZoneHidden('${z.id}',this.checked)"><span>${z.name}</span></label><button type="button" class="zoneMoveBtn" title="위로" ${zi===0?'disabled':''} onclick='reorderZoneInGroup("${z.id}",-1,${JSON.stringify(zs.map(q=>q.id))})'>▲</button><button type="button" class="zoneMoveBtn" title="아래로" ${zi===zs.length-1?'disabled':''} onclick='reorderZoneInGroup("${z.id}",1,${JSON.stringify(zs.map(q=>q.id))})'>▼</button></span>`).join('')}</div>
       </div>`).join('')}
     </div>` : '';
   const manageBtnHtml = adminUnlocked ? `<button type="button" class="zoneListManageBtn" onclick="toggleZoneManage()">${zoneManageOpen?'닫기':'구역 편집'}</button>` : '';
@@ -1798,9 +1824,11 @@ function renderPanel(z){
         <div class="chips">${chipsHtml}</div>
         <div class="metrics">
           <div class="metric"><div class="k">참고 BPM</div><div class="v">${bpmHtml}</div></div>
-          <div class="metric"><div class="k">dB 기준</div><div class="v" style="font-size:11px;">${dbNow||'-'}</div></div>
+          <div class="metric"><div class="k" style="text-transform:none;">dB기준</div><div class="v" style="font-size:11px;">${panelDbCellHtml(z,'stdDb',dbNow,'기준 dB')}</div></div>
+          <div class="metric"><div class="k" style="text-transform:none;">우천시 dB</div><div class="v" style="font-size:11px;">${panelDbCellHtml(z,'rainDbNote',z.rainDbNote,'우천시 dB')}</div></div>
+          <div class="metric"><div class="k" style="text-transform:none;">행사시 dB</div><div class="v" style="font-size:11px;">${panelDbCellHtml(z,'eventDb',z.eventDb,'행사시 dB')}</div></div>
           <div class="metric"><div class="k">조도(현재대)</div><div class="v" style="font-size:11px;">${zoneCurrentLux(z,cat,minute)}</div></div>
-          <div class="metric"><div class="k">페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
+          <div class="metric"><div class="k">기준 페이더</div><div class="v" style="font-size:11px;">${faderDisplay}</div></div>
         </div></div>`;
     const segs=sched.map(b=>{ let s=toMin(b.s),e=toMin(b.e); let dur=e>s?e-s:(1440-s+e); return `<div class="seg genreHover" data-genre="${(b.g||'').replace(/"/g,'&quot;')}" data-time="${b.s}-${b.e}" style="width:${dur/1440*100}%;background:${b.color||colorFor(b.g)}"></div>`; }).join('');
     const opRanges = hourRangesForDay(z,panelDay).filter(r=>r.type!=='break');
@@ -1887,6 +1915,19 @@ function savePanelBlockField(zoneId,field,idx,patchObj){
   sched[idx]={...sched[idx],...patchObj};
   persistMatrixPatch(zoneId,{[field]:sched},'참고 BPM · 장르 태그가 저장되었습니다');
   if(state.selected && state.selected.id===zoneId){ state.selected=ZONES.find(zz=>zz.id===zoneId); renderPanel(state.selected); }
+}
+function panelDbCellHtml(z,field,shown,label){
+  const val = (field==='stdDb' && z.stdDb!=null) ? z.stdDb : (shown||'');
+  if(!adminUnlocked) return val || '-';
+  const raw = (field==='stdDb') ? (z.stdDb||'') : (z[field]||'');
+  return `<input type="text" class="panelDbInput" data-field="${field}" value="${String(raw).replace(/"/g,'&quot;')}" placeholder="${String(field==='stdDb'?(shown||'-'):'-').replace(/"/g,'&quot;')}" title="${label}" onchange="savePanelDb(this)">`;
+}
+function savePanelDb(input){
+  const ctx=nowCardContext(input); if(!ctx) return;
+  const field=input.dataset.field;
+  persistMatrixPatch(ctx.zoneId,{[field]: input.value.trim()},'dB 값이 저장되었습니다');
+  const z=ZONES.find(zz=>zz.id===ctx.zoneId);
+  if(state.selected && state.selected.id===ctx.zoneId){ state.selected=z; renderPanel(state.selected); }
 }
 function savePanelBpm(input){
   const ctx=nowCardContext(input); if(!ctx) return;
@@ -2228,10 +2269,12 @@ function readLightSpotRow(card){
   const location = card.querySelector('.ls-location').value;
   const lights = [...card.querySelectorAll('.ls-lightItem')].map(el=>{
     const lightTypeId = el.querySelector('.ls-lighttype').value;
-    const values = [...el.querySelectorAll('.ls-valueRow')].map(row=>({
-      slotId: row.querySelector('.ls-slot').value,
-      value: row.querySelector('.ls-value').value
-    }));
+    const values = [...el.querySelectorAll('.ls-valueRow')].map(row=>{
+      const rEl = row.querySelector('.ls-reason');
+      const o = { slotId: row.querySelector('.ls-slot').value, value: row.querySelector('.ls-value').value };
+      if(rEl && rEl.value.trim()) o.reason = rEl.value.trim();
+      return o;
+    });
     return {id: el.dataset.id, lightTypeId, values};
   });
   return {id: card.dataset.id, location, lights};
@@ -2248,12 +2291,14 @@ function addStandardLuxValue(){
   renderAdminForm();
 }
 function removeStandardLuxValue(vi){ collectDraftFromForm(); ensureStandardLux().splice(vi,1); renderAdminForm(); }
-function luxValueRowHtml(v,vi,allSlots,removeFnCall){
+function luxValueRowHtml(v,vi,allSlots,removeFnCall,withReason){
   const slotOptions = allSlots.map(s=>`<option value="${s.id}" ${s.id===v.slotId?'selected':''}>${s.label}</option>`).join('');
-  return `<div class="ls-valueRow" data-vi="${vi}">
+  const reasonHtml = withReason ? `<input type="text" class="ls-reason" value="${(v.reason||'').replace(/"/g,'&quot;')}" placeholder="설정 이유 (예: ㅇㅇㅇㅇ 이유로 설정) — 지도 카드에서 마우스를 올리면 표시">` : '';
+  return `<div class="ls-valueRow${withReason?' withReason':''}" data-vi="${vi}">
     <select class="ls-slot">${slotOptions}</select>
     <input type="text" class="ls-value" value="${(v.value||'').replace(/"/g,'&quot;')}" placeholder="예: 300-500 lx / 4000K">
     <button type="button" class="ls-removeBtn" onclick="${removeFnCall}" title="삭제">×</button>
+    ${reasonHtml}
   </div>`;
 }
 function lightSpotRowHtml(spot,i,cat){
@@ -2262,7 +2307,7 @@ function lightSpotRowHtml(spot,i,cat){
   const lights = spot.lights || [];
   const lightItemsHtml = lights.map((light,li)=>{
     const opts = allTypes.map(t=>`<option value="${t.id}" ${t.id===light.lightTypeId?'selected':''}>${t.label}</option>`).join('');
-    const valuesHtml = (light.values||[]).map((v,vi)=>luxValueRowHtml(v,vi,allSlots,`removeSpotLightValue(${i},${li},${vi})`)).join('') || '<p class="muted" style="font-size:11px;margin:2px 0;">등록된 시간대 값이 없습니다.</p>';
+    const valuesHtml = (light.values||[]).map((v,vi)=>luxValueRowHtml(v,vi,allSlots,`removeSpotLightValue(${i},${li},${vi})`,true)).join('') || '<p class="muted" style="font-size:11px;margin:2px 0;">등록된 시간대 값이 없습니다.</p>';
     const canAddMore = (light.values||[]).length < allSlots.length;
     return `<div class="ls-lightItem" data-id="${light.id}">
       <div class="toolRow">
@@ -2346,6 +2391,10 @@ function renderAdminList(){
   document.getElementById('adminSearchInput').addEventListener('input',e=>{ adminSearch=e.target.value; renderAdminList(); });
 }
 async function moveZoneOrder(id,dir){
+  const z0=ZONES.find(zz=>zz.id===id); if(!z0) return;
+  return reorderZoneInGroup(id,dir,ZONES.filter(zz=>zoneFloor(zz)===zoneFloor(z0)&&zz.wing===z0.wing).map(zz=>zz.id));
+}
+async function moveZoneOrderLegacy_(id,dir){
   const z=ZONES.find(zz=>zz.id===id); if(!z) return;
   const groupIds=ZONES.filter(zz=>zoneFloor(zz)===zoneFloor(z)&&zz.wing===z.wing).map(zz=>zz.id);
   const gi=groupIds.indexOf(id), ti=gi+dir; if(ti<0||ti>=groupIds.length) return;
