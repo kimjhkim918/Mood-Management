@@ -3973,6 +3973,20 @@ saveHiddenZoneIds = function(){
 };
 const _renderZoneList_orig = renderZoneList;
 renderZoneList = function(){ syncHiddenForFloor(); return _renderZoneList_orig.apply(this, arguments); };
+/* 1초마다 호출되어도 내용이 같으면 다시 그리지 않음 — 열려 있는 드롭다운(선택 목록)이 닫히지 않게 */
+const _renderZoneList_nodiff = renderZoneList;
+renderZoneList = function(){
+  const wrap = document.getElementById('zoneListWrap');
+  if(!wrap) return _renderZoneList_nodiff.apply(this, arguments);
+  const before = wrap.innerHTML;
+  const tmp = document.createElement('div'); tmp.id = 'zoneListWrap'; tmp.style.display = 'none';
+  wrap.id = 'zoneListWrap__old'; wrap.parentNode.insertBefore(tmp, wrap);
+  let r;
+  try{ r = _renderZoneList_nodiff.apply(this, arguments); }
+  finally { tmp.remove(); wrap.id = 'zoneListWrap'; }
+  if(tmp.innerHTML !== before) wrap.innerHTML = tmp.innerHTML;
+  return r;
+};
 
 /* ---------- 3. 조명 설정 ---------- */
 const LF_ID = 'floor-lighting', LF_LABEL = '조명구역';
@@ -3985,7 +3999,7 @@ const LG_TM_INDEX = {day:0, early:1, late:2, after:3, clean:4};   // it.tm = [�
 const LIGHT_LOCAL_KEY = 'pmc_lighting_overrides_v1', LIGHT_PRESET_KEY = 'pmc_lighting_preset_v1';
 let LIGHT_OVR = (function(){ try{ return JSON.parse(localStorage.getItem(LIGHT_LOCAL_KEY)||'{}') || {}; }catch(e){ return {}; } })();
 let lightPresetState = (function(){ try{ return JSON.parse(localStorage.getItem(LIGHT_PRESET_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-let lgSeedCache = {}, lgIdx = {}, lgEditKey = null, lgDraft = null, lgOpen = {}, lgDbAttached = false;
+let lgEditHost = '', lgSeedCache = {}, lgIdx = {}, lgEditKey = null, lgDraft = null, lgOpen = {}, lgDbAttached = false;
 function lgEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function lgExpand(a){ return {id:a[0], n:a[1], t:a[2], v:a[3], ch:a[4], tm:a[5], nt:a[6], ps:a[7], pr:a[8], loc:a[9]||''}; }
 const LG_PS_DEFAULT = [0,5,10,20,50,80,100];   // PS 조명 기본 메모리 값
@@ -4050,7 +4064,7 @@ function lgAreaViewHtml(a, ai, key, total){
 function lgViewHtml(key){
   const areas = lgAreasFor(key);
   const body = areas.map((a,ai)=>(areas.length>1?`<div class="lgAreaTitle">${lgEsc(a.n)}</div>`:'')+lgAreaViewHtml(a, ai, key, 0)).join('');
-  return `<div class="lgAdminRow lgAdminOnly"><button type="button" class="lgEditBtn" onclick="lgStartEdit('${key}')">✎ 조명 편집</button></div>${body}`;
+  return `<div class="lgAdminRow lgAdminOnly"><button type="button" class="lgEditBtn" onclick="lgStartEdit('${key}',this)">✎ 조명 편집</button></div>${body}`;
 }
 /* --- 편집기(관리자) --- */
 function lgTypeSelect(t){
@@ -4077,13 +4091,13 @@ function lgEditHtml(key){
       ${LIGHT_OVR[key]?`<button type="button" class="btnGhost" onclick="lgResetSeed()">시트 기본값으로 되돌리기</button>`:''}</div>`;
 }
 function lgInnerHtml(key){ return (lgEditKey===key && lgDraft) ? lgEditHtml(key) : lgViewHtml(key); }
-function lgBuildBlock(key){ const el = document.createElement('div'); el.className = 'infoblock lgBlock'; el.dataset.key = key; el.dataset.slot = lgNowSlot(); el.innerHTML = lgInnerHtml(key); return el; }
+function lgBuildBlock(key, host){ const el = document.createElement('div'); el.className = 'infoblock lgBlock'; el.dataset.key = key; if(host) el.dataset.host = host; el.dataset.slot = lgNowSlot(); el.innerHTML = lgInnerHtml(key); return el; }
 function lgRefresh(){
   document.querySelectorAll('.lgBlock').forEach(b=>{ if(lgEditKey && b.dataset.key===lgEditKey) return; b.innerHTML = lgInnerHtml(b.dataset.key); });
   lfSig = '';
 }
 function lgRerenderBlock(key){ document.querySelectorAll('.lgBlock').forEach(b=>{ if(b.dataset.key===key) b.innerHTML = lgInnerHtml(key); }); }
-function lgBlockEl(){ return document.querySelector('.lgBlock[data-key="'+lgEditKey+'"]'); }
+function lgBlockEl(){ return [...document.querySelectorAll('.lgBlock[data-key]')].find(b=>b.dataset.key===lgEditKey && (b.dataset.host||'')===lgEditHost) || null; }
 function lgCollect(){
   const blk = lgBlockEl(); if(!blk || !lgDraft) return;
   lgDraft.areas = [...blk.querySelectorAll('.lgEArea')].map(aEl=>({
@@ -4127,8 +4141,9 @@ function lgMoveSelected(){
   lgRerenderBlock(src); lgRefresh();
   toast(n+'개 조명을 이동했습니다');
 }
-function lgStartEdit(key){
+function lgStartEdit(key, btn){
   if(!adminUnlocked) return;
+  const hb = btn && btn.closest ? btn.closest('.lgBlock') : null; lgEditHost = hb ? (hb.dataset.host||'') : '';
   lgEditKey = key; lgDraft = {areas: JSON.parse(JSON.stringify(lgAreasFor(key)))};
   if(!lgDraft.areas.length) lgDraft.areas.push({n:'조명', i:[]});
   lgRerenderBlock(key);
@@ -4251,6 +4266,7 @@ function lgManualHtml(z, cat, curSlotId){
 const _renderPanel_orig = renderPanel;
 renderPanel = function(z){
   const panel = document.getElementById('panel');
+  if(z && panel && lgEditKey===z.id && lgEditHost===''){ const cur = panel.querySelector('.lgBlock[data-key="'+z.id+'"]'); if(cur) return; }
   const old = (panel && z) ? panel.querySelector('.lgBlock') : null;
   const keep = (old && old.dataset.key===z.id) ? old : null;
   if(keep) keep.remove();
@@ -4284,6 +4300,33 @@ renderPanel = function(z){
   anchor.appendChild(blk);
   return r;
 };
+/* 관리자 모드 '구역 데이터' › '💡 조명 · 조도' 탭에도 같은 조명 편집 (지도 탭과 같은 데이터) */
+const _renderAdminForm_orig = renderAdminForm;
+renderAdminForm = function(){
+  try{ if(lgEditKey && lgEditHost==='admin') lgCollect(); }catch(e){}
+  const r = _renderAdminForm_orig.apply(this, arguments);
+  try{
+    const tab = document.getElementById('zoneTabLighting'); const zz = adminDraft;
+    if(lgEditKey && lgEditHost==='admin' && (!zz || lgEditKey!==zz.id)){ lgEditKey = null; lgDraft = null; }
+    if(tab && zz && zz.id){
+      const wrap = document.createElement('div'); wrap.className = 'field'; wrap.style.cssText = 'border-top:1px solid var(--border);padding-top:16px;';
+      wrap.innerHTML = '<label>📋 표준화 시트 조명 (지도 탭 「조도(럭스) 기준」과 같은 데이터)</label><p class="secdesc" style="margin:2px 0 10px;max-width:none;font-size:12px;">여기서 수정해도, 지도 탭에서 수정해도 똑같이 적용됩니다. 이 조명이 등록된 구역은 지도 탭에서 위의 「상세 위치별 조명」 대신 이 조명이 표시됩니다.</p>';
+      wrap.appendChild(lgBuildBlock(zz.id, 'admin')); tab.appendChild(wrap);
+    }
+  }catch(e){ console.warn('조명 편집기(관리자) 표시 오류', e); }
+  return r;
+};
+
+/* [KEEP_FLOOR_ON_SELECT] 구역을 눌러도 층 탭이 자동으로 바뀌지 않게 — 이미 선택된 층이 있으면 그 층을 유지
+   (기존 selectZone과 동일하되, 층 자동 이동 한 줄만 제외. 처음 로딩 시에는 기존처럼 구역의 층으로 설정) */
+selectZone = function(id, resetPreview=true){
+  state.selected = ZONES.find(z=>z.id===id);
+  if(state.selected && (!state.floor || !FLOORS.find(f=>f.id===state.floor))) state.floor = zoneFloor(state.selected);
+  if(resetPreview){ state.previewMin=null; state.followNow=true; }
+  panelDay = dayKeyForDate(new Date());
+  renderMap(); renderPanel(state.selected);
+};
+
 /* 조명구역(지도 없는 층) */
 let lfSig = '', lfWasOn = false;
 state.lfSel = null;
