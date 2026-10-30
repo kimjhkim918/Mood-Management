@@ -1392,9 +1392,9 @@ function setLivePill(){
 }
 async function initDb(){
   try{
-    if(typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length){ setLivePill(); return; }
+    if(typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length){ customMapPending=false; setLivePill(); return; }
     const db = firebase.firestore();
-    if(!db){ setLivePill(); return; }
+    if(!db){ customMapPending=false; setLivePill(); return; }
     dbHandle = db; isLive = true; setLivePill();
     db.collection('zones').onSnapshot(snap=>applyLiveDocs(snap.docs), err=>{ console.warn('zones snapshot error', err); isLive=false; setLivePill(); });
     db.doc('content/genreGuide').onSnapshot(snap=>{ if(snap.exists){ CONTENT.genreGuide=snap.data().items||[]; onContentChanged(); } }, err=>console.warn('content snapshot error',err));
@@ -1494,6 +1494,13 @@ const MAP_W=1079, MAP_H=992;
 const DEFAULT_MAP_SRC = (document.getElementById('mapImg') || {}).src || '';
 const MAP_CHUNK_SIZE = 180000;
 let customMapDataUrl = null;
+let customMapPending = true;   /* 현재 지도 이미지를 확인하는 동안에는 HTML에 내장된 옛날 지도를 보여주지 않음 */
+/* 현재 지도 이미지를 이 기기(IndexedDB)에 저장해 두었다가 다음 방문 때 즉시 표시 — 지도가 바뀌면 updatedAt 비교로 새로 받음 */
+function mapCacheDb(){ return new Promise(res=>{ try{ const rq=indexedDB.open('pmc_map_cache',1); rq.onupgradeneeded=()=>rq.result.createObjectStore('maps'); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>res(null); }catch(e){ res(null); } }); }
+async function mapCacheGet(k){ const db=await mapCacheDb(); if(!db) return null; return new Promise(res=>{ try{ const r=db.transaction('maps').objectStore('maps').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>res(null); }catch(e){ res(null); } }); }
+async function mapCachePut(k,ver,data){ const db=await mapCacheDb(); if(!db) return; try{ db.transaction('maps','readwrite').objectStore('maps').put({ver,data},k); }catch(e){} }
+try{ mapCacheGet('default').then(c=>{ if(c && c.data && !customMapDataUrl){ customMapDataUrl=c.data; customMapPending=false; try{ renderMap(); renderAdminMap(); }catch(e){} } }); }catch(e){}
+setTimeout(()=>{ if(customMapPending){ customMapPending=false; try{ renderMap(); renderAdminMap(); }catch(e){} } },12000);
 function floorImageSrc(floorId){
   if(!floorId) floorId = FLOORS[0] ? FLOORS[0].id : 'default';
   const isDefault = FLOORS[0] && floorId===FLOORS[0].id;
@@ -1539,18 +1546,19 @@ async function uploadFloorImageToDb(floorId, dataUrl){
   await dbHandle.doc('content/floorMapMeta').set(meta);
 }
 async function loadCustomMapImage(){
-  if(!dbHandle) return;
+  if(!dbHandle){ customMapPending=false; return; }
   try{
     const metaSnap = await dbHandle.doc('content/mapImageMeta').get();
-    if(!metaSnap.exists) return;
-    const n = metaSnap.data().chunks;
-    let full='';
-    for(let i=0;i<n;i++){
-      const s = await dbHandle.doc('mapImageChunks/'+i).get();
-      if(s.exists) full += s.data().data;
-    }
-    if(full){ customMapDataUrl=full; renderMap(); renderAdminMap(); }
-  }catch(e){ console.warn('custom map image load failed', e); }
+    if(!metaSnap.exists){ customMapPending=false; renderMap(); renderAdminMap(); return; }
+    const meta = metaSnap.data()||{}; const n = meta.chunks; const ver = meta.updatedAt||'';
+    const cached = ver ? await mapCacheGet('default') : null;
+    if(cached && cached.ver===ver && cached.data){ customMapDataUrl=cached.data; customMapPending=false; renderMap(); renderAdminMap(); return; }
+    /* 이미지 조각을 동시에 내려받음 */
+    const parts = await Promise.all(Array.from({length:n},(_,i)=>dbHandle.doc('mapImageChunks/'+i).get()));
+    const full = parts.map(s=>s.exists ? s.data().data : '').join('');
+    if(full){ customMapDataUrl=full; if(ver) mapCachePut('default',ver,full); }
+    customMapPending=false; renderMap(); renderAdminMap();
+  }catch(e){ console.warn('custom map image load failed', e); customMapPending=false; try{ renderMap(); renderAdminMap(); }catch(_){} }
 }
 async function loadFloorImages(){
   if(!dbHandle) return;
@@ -4607,6 +4615,7 @@ body.xmas::after{background-image:radial-gradient(circle,rgba(224,170,42,1) 0 1.
 @media (prefers-reduced-motion: reduce){ body.xmas::before,body.xmas::after{animation:none;opacity:.5;} }
 body.xmas header.top{border-bottom:2px solid transparent;border-image:linear-gradient(90deg,transparent,#c9a24a 28%,#b4666d 50%,#c9a24a 72%,transparent) 1;}
 .chStatus{margin:6px 0 10px;padding:8px 12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface-2);font-size:12.5px;}
+.mapImgWrap:not(.mapReady) #mapImg,.mapImgWrap:not(.mapReady) #adminMapImg{visibility:hidden;}   /* 처음 화면에서 HTML에 내장된 옛날 지도가 잠깐 보이지 않게 */
 .mapImgWrap.mapLoading{min-height:240px;position:relative;}
 .mapImgWrap.mapLoading::after{content:"이 층 지도를 불러오는 중…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;font-weight:700;pointer-events:none;}
 .xmasIcon{display:inline-block;margin-left:10px;line-height:1;vertical-align:baseline;}
@@ -4836,12 +4845,13 @@ function dbMuteBpmFix(){
 const _applyMapImage_orig = applyMapImage;
 applyMapImage = function(imgEl,floorId){
   const id = floorId || (FLOORS[0] ? FLOORS[0].id : 'default');
-  const loading = !!imgEl && floorMapPending.has(id) && !floorMapImages[id];
+  const loading = !!imgEl && !floorMapImages[id] && (floorMapPending.has(id) || (customMapPending && !customMapDataUrl));
   const wrap = imgEl && imgEl.closest ? imgEl.closest('.mapImgWrap') : null;
-  if(wrap) wrap.classList.toggle('mapLoading', loading);
+  if(wrap){ wrap.classList.toggle('mapLoading', loading); if(!loading) wrap.classList.add('mapReady'); }
   if(loading){ imgEl.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; return; }
   return _applyMapImage_orig.apply(this,arguments);
 };
+setTimeout(()=>{ document.querySelectorAll('.mapImgWrap').forEach(w=>w.classList.add('mapReady')); },13000);
 /* 스키하우스 같은 이벤트 BGM 블록은 '타깃 페르소나 / 목표 무드' 바로 위에 넣습니다 */
 function xmasPlace(html){
   const pn=$$('#panel'); if(!pn) return;
