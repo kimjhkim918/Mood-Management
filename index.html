@@ -4537,6 +4537,49 @@ initDb();
 #anBoard table.anLt th:nth-child(3),#anBoard table.anLt th:nth-child(4),#anBoard table.anLt th:nth-child(5){width:14%;}
 #anBoard table.anLt th:nth-child(6){width:56px;}
 #anBoard table.anRt .anIn,#anBoard table.anLt .anIn{width:100%;box-sizing:border-box;}
+/* ---- 모바일: 구역 상세 패널이 화면 밖으로 밀려나거나 글씨가 칸을 넘지 않게 ---- */
+@media (max-width:980px){
+  .mapgrid{grid-template-columns:minmax(0,1fr);}
+  .mapgrid > .panel,.mapgrid > .mapcard,.mapgrid > #anBoard{min-width:0;max-width:100%;}
+  .panel{overflow-wrap:anywhere;word-break:keep-all;}
+  .panel .nowcard,.panel .metrics,.panel .metricPair,.panel .metric,.panel .metric .v,.panel .nowcard .genre,.panel .chips,.panel .infoblock{min-width:0;max-width:100%;}
+  .panel .metric .v,.panel .nowcard .genre{overflow-wrap:anywhere;}
+  .panel .nowcard .row1{flex-wrap:wrap;gap:6px;}
+  .panel table.schedTable{table-layout:fixed;width:100%;}
+  .panel table.schedTable th,.panel table.schedTable td{overflow-wrap:anywhere;}
+  .panel .lgBox,.panel .lgBoxRow,.panel .lgPSWrap,.panel .lgPSTitle,.panel .lgPSList,.panel .lgPSRow,.panel .lgAreaTitle,.panel .faderChipRow,.panel .dbRefSplit{min-width:0;max-width:100%;}
+  .panel .lgPSRow,.panel .faderChipRow,.panel .lgAreaTitle{flex-wrap:wrap;}
+  .panel .dbRefSplit{flex-wrap:wrap;}
+  .panel .dayToggle{flex-wrap:wrap;}
+  .xmasArea table.schedTable td,.xmasArea table.schedTable th{overflow-wrap:anywhere;}
+}
+/* ---- 아트나잇: 모바일에서는 표 대신 카드형으로 (글씨가 칸 밖으로 나가지 않게) ---- */
+@media (max-width:640px){
+  #anBoard{padding:14px 12px;border-radius:14px;}
+  #anBoard .anRoute{padding:12px 12px;}
+  #anBoard .anFlow{gap:4px;}
+  #anBoard .anNode{font-size:11.5px;padding:3px 8px;}
+  #anBoard table.anRt,#anBoard table.anLt,#anBoard table.anRt tbody,#anBoard table.anLt tbody{display:block;width:100%;min-width:0;table-layout:auto;}
+  #anBoard table.anRt thead,#anBoard table.anLt thead{display:none;}
+  #anBoard table.anRt tr,#anBoard table.anLt tr{display:block;margin:0 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+  #anBoard table.anRt td,#anBoard table.anLt td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0;border:none;text-align:right;min-width:0;}
+  #anBoard table.anRt td:first-child,#anBoard table.anLt td:first-child{display:block;text-align:left;font-weight:700;padding-bottom:5px;margin-bottom:3px;border-bottom:1px dashed var(--border-strong);}
+  #anBoard table.anRt td[data-label]::before,#anBoard table.anLt td[data-label]::before{content:attr(data-label);color:var(--text-muted);font-size:11.5px;font-weight:700;text-align:left;flex:0 0 auto;}
+  #anBoard table.anRt td .anIn,#anBoard table.anLt td .anIn{width:58%;flex:0 1 58%;}
+  #anBoard table.anRt td:first-child .anIn,#anBoard table.anLt td:first-child .anIn{width:100%;flex:none;}
+  #anBoard table.anRt td:last-child:not([data-label]),#anBoard table.anLt td:last-child:not([data-label]){display:block;text-align:right;}
+  #anBoard details .anLightWrap{padding:0 10px 10px;overflow-x:visible;}
+  #anBoard summary{padding:10px 12px;font-size:13px;}
+  #anBoard .anChips{gap:6px;}
+  #anBoard .anChip{font-size:11.5px;padding:4px 10px;max-width:100%;overflow-wrap:anywhere;}
+  #anBoard .anChip .anIn{width:50px;}
+  #anBoard .anGenre{gap:6px;}
+  #anBoard .anGenre .anIn.g{min-width:0;width:100%;flex:1 1 100%;}
+  #anBoard .anSave{flex-wrap:wrap;gap:8px;}
+  #anBoard .anTxRow .anTa,#anBoard .anTxRow .anIn{min-width:0;width:100%;flex:1 1 100%;}
+  #anBoard h2.sectitle{font-size:20px;}
+  .xmasArea table.schedTable td,.xmasArea table.schedTable th{overflow-wrap:anywhere;}
+}
 #anBoard .anIn.s{width:84px;} #anBoard .anIn.m{width:190px;} #anBoard .anIn.z{width:150px;font-size:11px;} #anBoard .anIn.g{flex:1;min-width:240px;width:auto;} #anBoard .anIn.t{font-weight:700;font-size:14px;}
 #anBoard .anChip .anIn{width:54px;display:inline-block;padding:2px 6px;}
 #anBoard .anIn.up{color:var(--bad);font-weight:700;}
@@ -5105,10 +5148,10 @@ function anBoardHtml(){
       const ad = (n.aDay!=null&&n.aDay!=='') ? n.aDay : (d?anShift(d,O):'');
       const P = `r.${ri}.n.${ni}.`;
       if(adm) return `<tr><td>${anIn(P+'n',n.n,'구역명','w')}<div class="anNote">연결 구역 ID: ${anIn(P+'z',n.z||'','zone id','z')}</div></td>
-        <td>${anIn(P+'day',n.day||'',bd||'-','s')}</td>
-        <td>${anIn(P+'aDay',n.aDay||'',d?anShift(d,O):'-','s up')}</td>
+        <td data-label="평시">${anIn(P+'day',n.day||'',bd||'-','s')}</td>
+        <td data-label="Art Night">${anIn(P+'aDay',n.aDay||'',d?anShift(d,O):'-','s up')}</td>
         <td><button type="button" class="anX" data-act="delNode" data-r="${ri}" data-n="${ni}" title="삭제">✕</button></td></tr>`;
-      return `<tr><td><strong>${anEsc(n.n)}</strong></td><td>${anDbTxt(d)}</td><td class="up">${/^mute$/i.test(ad)?'MUTE':(ad?ad+' dB':'-')}</td></tr>`;
+      return `<tr><td><strong>${anEsc(n.n)}</strong></td><td data-label="평시">${anDbTxt(d)}</td><td class="up" data-label="Art Night">${/^mute$/i.test(ad)?'MUTE':(ad?ad+' dB':'-')}</td></tr>`;
     }).join('');
     const genre = adm
       ? `<div class="anGenre"><b>🎼 통합 장르</b>${anIn(`r.${ri}.genre`,r.genre,'이 동선 전체에 송출할 장르 (엑셀 확정 후 입력)','g')}</div>`
@@ -5125,8 +5168,8 @@ function anBoardHtml(){
       let ch='-', cls='';
       if(!isNaN(nv)&&!isNaN(av)){ ch = av<nv?'▼ 낮춤':(av>nv?'▲ 높임':'동일'); cls = av<nv?'tagDown':''; }
       else if(String(x.v).toUpperCase()==='OFF'){ ch='OFF'; cls='tagOff'; }
-      if(adm) return `<tr><td>${anIn(`l.${i}.i`,x.i,'세부 구역','w')}</td><td>${anIn(`l.${i}.ar`,x.ar||'','area','s')}</td><td>${anIn(`l.${i}.n`,anPct(x.n),'예: 20%','s')}</td><td>${anIn(`l.${i}.v`,anPct(x.v),'예: 20%','s up')}</td><td class="${cls}">${ch}</td><td><button type="button" class="anX" data-act="delLight" data-l="${i}" title="삭제">✕</button></td></tr>`;
-      return `<tr><td>${anEsc(x.i)}</td><td>${anEsc(x.ar||'-')}</td><td>${anEsc(anPct(x.n)||'-')}</td><td><strong>${anEsc(anPct(x.v)||'-')}</strong></td><td class="${cls}">${ch}</td></tr>`;
+      if(adm) return `<tr><td>${anIn(`l.${i}.i`,x.i,'세부 구역','w')}</td><td data-label="area">${anIn(`l.${i}.ar`,x.ar||'','area','s')}</td><td data-label="평시">${anIn(`l.${i}.n`,anPct(x.n),'예: 20%','s')}</td><td data-label="ART NIGHT">${anIn(`l.${i}.v`,anPct(x.v),'예: 20%','s up')}</td><td class="${cls}" data-label="변화">${ch}</td><td><button type="button" class="anX" data-act="delLight" data-l="${i}" title="삭제">✕</button></td></tr>`;
+      return `<tr><td>${anEsc(x.i)}</td><td data-label="area">${anEsc(x.ar||'-')}</td><td data-label="평시">${anEsc(anPct(x.n)||'-')}</td><td data-label="ART NIGHT"><strong>${anEsc(anPct(x.v)||'-')}</strong></td><td class="${cls}" data-label="변화">${ch}</td></tr>`;
     }).join('');
     const isOpen = anOpen[a.n]!=null ? anOpen[a.n] : (areas.length<=3 || adm);
     const nameEdit = adm ? ` <button type="button" class="anX" data-act="renameArea" data-a="${anEsc(a.n)}" title="구역 이름 변경">✎ 이름</button> <button type="button" class="anX" data-act="delAreaAll" data-a="${anEsc(a.n)}" title="이 구역의 조명을 모두 삭제">구역 삭제</button>` : '';
