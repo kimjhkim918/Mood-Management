@@ -5708,5 +5708,112 @@ try{ renderGlossary(); if(state && state.selected) renderPanel(state.selected); 
 })();
 </script>
 
+
+<!-- [신규 추가 261111] 크리스마스 시즌 변경 — ① 단계 일정 ② 261110 시간대별 BGM 자료의 크리스마스 장르 ③ 조도 색온도 2700K
+     기존 코드·저장 데이터는 수정하지 않고, 화면에 표시되는 값만 덮어씁니다(Firestore/localStorage에 쓰지 않음). -->
+<script id="addScript261111">
+(function(){
+'use strict';
+/* ---------- ② 261110_Pcity_시간대별_BGM_자료.xlsx '크리스마스 장르' (엑셀 30% 기준, 단계별 비율은 자동 치환) ----------
+   zones: 해당 장르를 쓰는 구역 id (현재 구역 장르가 엑셀 '기존 장르'와 일치하는 구역) */
+const XMAS_BGM = [
+  /* 라스칼라 */ {zones:["lascala"], s:"00:10-06:30 방송준비중|06:30-18:00 Hotel JZ+XJZ(Day) 30%|18:00-20:30 Hotel JZ(Calm)+XJZ 30%|20:30-23:00 Hotel JZ+JQ(Calm)+XJZ 30%|23:00-00:10 방송준비중"},
+  /* 라쿠(일식당) */ {zones:["raku"], s:"00:10-11:00 방송준비중|11:00-17:00 Raku_Jazz Guitar(M)_Calm 30%|17:00-22:00 JQ(M-F)_(Day, Soft) 30%|22:00-11:00 방송준비중"},
+  /* 가든바이라쿠 */ {zones:["zone-mu6me9i3"], s:"00:10-11:00 방송준비중|11:00-15:00 Bossa+Christmas_Inst 30%|15:00-18:00 Jazz Guitar(M-F) 30%|18:00-00:10 Swing(F)+JazzVocal(F) 30%"},
+  /* 온더플레이트 */ {zones:["otp", "zone-mu6m227j"], s:"00:10-06:00 방송준비중|06:00-11:00 Bossa+Christmas_Inst 30%|11:00-16:30 Ibiza Inst 30%|16:30-22:30 JazzH.D 30%|22:30-06:00 방송준비중"},
+  /* 임페리얼트레저(중식당) */ {zones:["imperial"], s:"00:10-09:00 방송준비중|09:00-11:00 Hotel JZ(Calm)+XJZ 30%|11:00-18:00 I_JZ+Jazz Quartet(M-F) 30%|18:00-22:30 Jazz Quartet+Big Band(M-F)_(Day) 30%|22:30-09:00 방송준비중"},
+  /* 1층 메인로비 */ {zones:["lobby", "zone-mu3rv1ik", "zone-mu3s084t", "zone-mu3s42lx", "zone-mu3siers", "zone-mu3so22n", "zone-mu3sqdtx", "zone-mu3tiw6d", "zone-mu3tldny", "zone-mu3tn5cf", "zone-mu3toeca", "zone-mu6mona5", "zone-mu6muble", "zone-mu6myd2m", "zone-mu6pelgg"], s:"00:10-06:00 JazzH.D(Calm) 30%|06:00-14:00 JazzH.D(inst) 30%|14:00-21:00 Chill+LI+JH_Day 30%|21:00-00:10 J.Hiphop+Urban 30%"},
+  /* 라운지파라다이스 */ {zones:["lounge-paradise", "zone-mu6pv2k8"], s:"00:10-03:00 House_House.Inst 30%|03:00-11:30 Hotel_JZ+XJZ(Day)30%|11:30-16:00 JazzH.D 30%|16:00-17:00 Jazz Vocal(M-F) 30%|17:00-18:00 Swing(M)+JV(M) 30%|18:00-00:10 HouseV_House.Inst 30%"},
+  /* 레드윙 */ {zones:["zone-mu3s6p9k", "zone-mu3sayqq"], s:"00:10-07:00 Hotel_JZ(Calm)+XJZ 30%|07:00-11:00 Hotel_JZ+XJZ(Day)30%|11:00-19:00 I_JZ+Jazz Quartet(M-F) 30%|19:00-20:30 Hotel_JZ(Calm)+XJZ 30%|20:30-23:00 Hotel_JZ+Jazz Quartet(Calm)+XJZ 30%|23:00-00:10 Hotel_JZ(Calm)+XJZ 30%"},
+  /* 야외동선 */ {zones:["outdoor", "zone-mu3rqget", "zone-mu3sz5w9", "zone-mu3t3inc", "zone-mu3t699l", "zone-mu3tc7zn", "zone-mu3tfmbn", "zone-mu3v1sw6", "zone-mu3v4421", "zone-mu6sfxyb"], s:"00:10-06:00 방송준비중|06:00-19:00 AI+NA+CJ+JZ_Light 30%|19:00-21:00 Jazz Piano (Calm) 30%|21:00-23:00 Hotel_JZ+XJZ 30%|23:00-00:10 방송준비중"},
+  /* 실내수영장_MENT */ {zones:["pool"], s:"00:10-07:00 방송준비중|07:00-10:30 Bossa+Christmas_Inst 30%|10:30-15:00 JazzH.D 30%|15:00-19:00 Chill+LI+JH_Day 30%|19:00-20:30 JazzH.D(Calm) 30%|20:30-00:10 방송준비중"},
+  /* 야외수영장 */ {zones:["zone-mu0zw4so", "zone-mu6rru09"], s:"00:10-09:00 방송준비중|09:00-12:00 Bossa+Christmas_Inst 30%|12:00-14:00 JazzH.D 30%|14:00-17:00 Chill+LI+JH_Day 30%|17:00-18:30 JazzH.D(Calm) 30%|18:30-00:10 방송준비중"},
+  /* 클럽라운지 */ {zones:["clublounge", "zone-mu3ssdzc", "zone-mu3tzcwm", "zone-mu3utp5k", "zone-mu6q38gs"], s:"00:10-06:00 Jazz Piano (Calm) 30%|06:00-12:00 Hotel JZ+XJZ(Day) 30%|12:00-17:30 JazzH.D 30%|17:30-22:00 Chill+LI+JH_Day 30%|22:00-00:10 Jazz Piano (Calm) 30%"},
+  /* 원더박스 퍼플윙 A */ {zones:["wonderbox", "zone-mu3sl0r0"], s:"00:10-10:40 Christmas Inst(Orchestra) 30%|10:40-19:30 [AI] Kids_Inst 실외 30%|19:30-00:10 Christmas Inst(Orchestra) 30%"},
+  /* 주차장/화장실 */ {zones:["zone-mu3nixj7", "zone-mu3ri27j", "zone-mu3rltmt", "zone-mu3rnsxe", "zone-mu3sfrxd"], s:"00:00-24:00 NA+XNA_Calm 30%"},
+  /* 사우나락커룸 */ {zones:["sauna", "zone-mu3u31b2", "zone-mu3upua1", "zone-mu6rwmds"], s:"00:10-06:00 방송준비중|06:00-22:00 NA+XNA_Calm 30%|22:00-00:10 방송준비중"},
+  /* 3ch_INNO */ {zones:["plaza", "shoppart", "zone-mul2l8lz"], s:"00:10-06:00 NA+XNA_Calm 30%|06:00-10:00 Bossa+Christmas_Inst 30%|10:00-20:00 Plaza_Pop+Kpop 30%|20:00-22:00 AI+NA+CJ+JZ_Light 30%|22:00-00:10 Hotel_JZ+JQ(Calm)+XJZ 30%"},
+  /* 4ch_LEGEND */ {zones:["artp-spa", "saerasae", "zone-mv6afpep", "zone-mv6akj2h", "zone-mv6az4e8", "zone-mv6b28q3"], s:"00:10-16:00 Hotel_JZ(Calm)+XJZ 30%|16:00-18:00 JV(S+M)+JI 30%|18:00-20:00 Swing(M)+JV(M) 30%|20:00-00:10 Hotel_JZ+JQ(Calm)+XJZ 30%"},
+  /* 5ch_TREND */ {zones:["chroma", "zone-mv6b4raw"], s:"00:10-07:00 Christmas Hit Carol(F) 30%|07:00-11:00 Pop(L+M+Urban) 30%|11:00-20:00 Christmas Carol MixX(F) 30%|20:00-00:10 Pop.Urban.TrendyV 30%"},
+  /* 시메르_ISSAC */ {zones:["zone-mukxhv5m", "zone-mukxjzrj", "zone-muky4s2k", "zone-mukycd4s", "zone-mukylti6", "zone-mukzgjaq", "zone-mul04t5p", "zone-mul0efkw", "zone-mul0rlsw", "zone-mul29mv8"], s:"00:10-09:00 [AI] Hotel_NA+E.G_Calm 30%|09:00-17:00 [AI] AI+NA+CJ+JZ_Light 30%|17:00-00:10 Hotel_JZ(Calm)+XJZ 30%"},
+  /* CIMER INNO 전관 (4-INNO 전관) */ {zones:["cimer-jjimjil", "zone-mukx7q9n", "zone-mul0tz3u"], s:"00:00-05:00 NA+XNA_Calm 30%|05:00-11:00 E.G+AI_Light 30%|11:00-15:00 Bossa+Christmas_Inst 30%|15:00-18:00 AI+NA+CJ+JZ_Light 30%|18:00-00:00 Hotel_JZ+JQ(Calm)+XJZ 30%"},
+  /* 비디오 큐레이션1 */ {zones:["zone-mv1wgrix"], s:"00:00-24:00 Christmas K-POP, POP (SONY MUSIC) 30%"},
+  /* 비디오 큐레이션3 */ {zones:["zone-mul24t2v"], s:"00:00-24:00 크리스마스 M/V(3WM) 100%"},
+  /* 로비(공용부) */ {zones:["hri-lobby", "hri-convention"], s:"00:10-06:00 JazzH.D(Calm) 30%|06:00-14:00 JazzH.D 30%|14:00-21:00 Chill+LI+JH_Day 30%|21:00-00:10 J.Hiphop+Urban 30%"},
+  /* Market Cafe */ {zones:["hri-market"], s:"00:10-06:00 방송준비중|06:00-11:00 Bossa+Christmas_Inst 30%|11:00-18:00 Hotel_JZ+XJZ(Day)30%|18:00-20:00 Pop.Urban.TrendyV 30%|20:00-22:30 Urban_Slow 30%|22:30-00:10 방송준비중"},
+  /* Swell Lounge */ {zones:["hri-swell"], s:"00:10-08:30 방송준비중|08:30-10:00 Jazz Guitar(M-F) 30%|10:00-18:00 Pop(L+M+Urban) 30%|18:00-23:00 House_Inst+Urb. V+Pop(F) 30%|23:00-23:30 Chill+LI+JH_Night 30%|23:30-00:10 방송준비중"},
+  /* Sauna */ {zones:["hri-sauna"], s:"00:10-06:00 NA+XNA_Calm 30%|06:00-18:00 Easy Listening Guitar+AI_Light 30%|18:00-00:10 NA+XNA_Calm 30%"},
+  /* Regancy Club */ {zones:["hri-regency"], s:"00:10-06:30 방송준비중|06:30-12:00 Hotel_JZ+XJZ(Day)30%|12:00-17:30 JazzH.D 30%|17:30-21:30 Chill+LI+JH_Day 30%|21:30-00:10 방송준비중"},
+  /* 수영장 */ {zones:["hri-pool"], s:"00:10-05:30 방송준비중|05:30-13:00 Bossa+Christmas_Inst 30%|13:00-15:00 JazzH.D 30%|15:00-20:00 Chill+LI+JH_Day 30%|20:00-22:00 J.Hiphop+Urban 30%|22:00-00:10 방송준비중"}
+];
+const XMAS_EXCLUDE = ["familylounge", "kidzone", "zone-mu3ts3io", "zone-mu3uy68t", "zone-mu6q7z38", "zone-mu3u7k3n", "zone-mu6r4pjz", "zone-muijldis", "cimer-water", "zone-muij2418", "zone-muiji4fd", "zone-mukxxs2a", "zone-mvy005z7", "zone-mul0ic4o", "zone-mul0oqld", "zone-mul1yo4r", "zone-mul21s2x", "hri-fitness"];
+/* ---------- ① 크리스마스 단계 일정: 1차 30% 11/3~11/12 · 2차 50% 11/13~11/19 · 3차 70% 11/20~12/3 · 4차 100% 12/4~12/25 ----------
+   저장된 이벤트 일정(Firestore content/eventSchedule)에 예전 단계 날짜가 들어 있어도, 예전 기본 날짜 그대로인 단계만 새 날짜로 바꿔 보여줍니다 */
+const XMAS_STAGES = [
+  {pct:30,  oldFrom:'2026-11-03', oldTo:'2026-11-12', from:'2026-11-03', to:'2026-11-12'},
+  {pct:50,  oldFrom:'2026-11-13', oldTo:'2026-11-26', from:'2026-11-13', to:'2026-11-19'},
+  {pct:70,  oldFrom:'2026-11-27', oldTo:'2026-12-10', from:'2026-11-20', to:'2026-12-03'},
+  {pct:100, oldFrom:'2026-12-11', oldTo:'2026-12-25', from:'2026-12-04', to:'2026-12-25'}
+];
+/* '3차부터 시작' / '4차부터 시작' 그룹의 시작일도 새 단계 시작일로 */
+const XMAS_GROUP_FROM = {'g-cimerAll':['2026-11-27','2026-11-20'], 'g-others':['2026-12-11','2026-12-04']};
+const XMAS_EXC = new Set(XMAS_EXCLUDE);
+const xmasFixed = new WeakSet();
+function xmasFixEvents(){
+  let d=null; try{ d = window.evGet && window.evGet(); }catch(e){}
+  if(!d || !Array.isArray(d.events) || xmasFixed.has(d)) return;
+  d.events.forEach(ev=>{
+    if(!ev || ev.id!=='xmas') return;
+    (ev.groups||[]).forEach(g=>{
+      (g.stages||[]).forEach(s=>{
+        const m = XMAS_STAGES.find(x=>x.pct===parseFloat(s.pct) && x.oldFrom===s.from && x.oldTo===s.to);
+        if(m){ s.from=m.from; s.to=m.to; }
+      });
+      const gf = XMAS_GROUP_FROM[g.id]; if(gf && g.from===gf[0]) g.from=gf[1];
+      if(Array.isArray(g.zones) && g.zones.some(id=>XMAS_EXC.has(id))) g.zones = g.zones.filter(id=>!XMAS_EXC.has(id));
+    });
+  });
+  xmasFixed.add(d);
+}
+const XMAS_OVR = {};
+XMAS_BGM.forEach(c=>{
+  const blocks = c.s.split('|').map(seg=>{ const [r,...rest]=seg.trim().split(' '); const [s,e]=r.split('-'); return {s,e,g:rest.join(' ')}; });
+  c.zones.forEach(id=>{ XMAS_OVR[id]=blocks; });
+});
+const xmasPctText = (g,pct)=>String(g).replace(/\s*30%\s*$/, ' '+pct+'%');
+/* 이벤트 일정에 따라 크리스마스 송출 중인 구역(xmasInfo)이면, 엑셀의 크리스마스 장르·시간대로 표시 */
+const _activeScheduleOf_xmas2611 = activeScheduleOf;
+activeScheduleOf = function(z){
+  try{
+    xmasFixEvents();
+    const ov = z && XMAS_OVR[z.id];
+    if(ov && window.xmasInfo){ const info = window.xmasInfo(z); if(info) return ov.map(b=>({...b, g:xmasPctText(b.g, info.pct)})); }
+  }catch(e){ console.warn('xmas 261111', e); }
+  return _activeScheduleOf_xmas2611.apply(this, arguments);
+};
+
+/* ---------- ③ 전 구역 조명(조도 기준) 색온도 → 2700K (카테고리 기준값 + 구역별 표준 조도/우천시 조도) ---------- */
+const K_RX = /\b\d{4}\s?K\b/g;
+const k2700 = s => typeof s==='string' ? s.replace(K_RX,'2700K') : s;
+function xmasFixLux(){
+  try{ (CATEGORIES||[]).forEach(c=>{ const cells=c && c.lux && c.lux.cells; if(!cells) return; Object.keys(cells).forEach(k=>{ const n=k2700(cells[k]); if(n!==cells[k]) cells[k]=n; }); }); }catch(e){}
+  try{ (ZONES||[]).forEach(z=>{
+    if(!z) return;
+    if(typeof z.rainLux==='string'){ const n=k2700(z.rainLux); if(n!==z.rainLux) z.rainLux=n; }
+    (z.standardLux||[]).forEach(v=>{ if(v && typeof v.value==='string'){ const n=k2700(v.value); if(n!==v.value) v.value=n; } });
+  }); }catch(e){}
+}
+['renderPanel','renderStructureForm','renderAdminForm'].forEach(name=>{
+  const orig = window[name]; if(typeof orig!=='function') return;
+  window[name] = function(){ xmasFixLux(); return orig.apply(this, arguments); };
+});
+if(typeof zoneCurrentLux==='function'){ const _zcl=zoneCurrentLux; zoneCurrentLux = function(){ xmasFixLux(); return k2700(_zcl.apply(this, arguments)); }; }
+if(typeof luxCell==='function'){ const _lc=luxCell; luxCell = function(){ return k2700(_lc.apply(this, arguments)); }; }
+
+xmasFixLux(); xmasFixEvents();
+try{ renderMap(); renderMatrix(); if(state && state.selected) renderPanel(state.selected); }catch(e){ console.warn(e); }
+})();
+</script>
+
 </body>
 </html>
